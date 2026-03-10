@@ -10,7 +10,7 @@ import pricingRoutes from "./routes/pricingRoutes.js";
 import promocodeRoutes from "./routes/promocodeRoutes.js";
 import offerRoutes from "./routes/offerRoutes.js";
 import reportRoutes from "./routes/reportRoutes.js";
-import paymentRoutes from "./routes/payment.js";
+// import paymentRoutes from "./routes/payment.js";
 
 dotenv.config();
 connectDB();
@@ -27,7 +27,7 @@ app.use("/api/pricing", pricingRoutes);
 app.use("/api/promocode", promocodeRoutes);
 app.use("/api/offers", offerRoutes);
 app.use("/api/reports", reportRoutes);
-app.use("/api/payment", paymentRoutes);
+// app.use("/api/payment", paymentRoutes);
 
 app.get("/", (req, res) => {
   res.send("Print Shop API Running");
