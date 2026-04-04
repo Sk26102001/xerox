@@ -1,0 +1,10 @@
+# Ignore environment variables
+.env
+
+# Ignore node modules
+node_modules/
+
+# Optional (good practice)
+dist/
+build/
+.DS_Store
