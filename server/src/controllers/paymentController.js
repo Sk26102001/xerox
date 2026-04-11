@@ -1750,8 +1750,6 @@ export const verifyPayment = async (req, res) => {
         console.log('=== VERIFY PAYMENT ===');
         console.log('Razorpay Order ID:', razorpay_order_id);
         console.log('Razorpay Payment ID:', razorpay_payment_id);
-        console.log('Final Amount from frontend:', finalAmount);
-        console.log('Total Discount:', totalDiscount);
 
         // 🔐 Signature verification
         const body = razorpay_order_id + "|" + razorpay_payment_id;
@@ -1768,9 +1766,7 @@ export const verifyPayment = async (req, res) => {
         }
 
         // 🔍 Find payment
-        const payment = await Payment.findOne({
-            razorpayOrderId: razorpay_order_id
-        });
+        const payment = await Payment.findOne({ razorpayOrderId: razorpay_order_id });
 
         if (!payment) {
             return res.status(404).json({
@@ -1815,7 +1811,6 @@ export const verifyPayment = async (req, res) => {
         order.status = 'processing';
         order.paymentId = razorpay_payment_id;
         order.razorpayPaymentId = razorpay_payment_id;
-        // order.paymentMode = 'online';
         order.paymentMode = 'upi';
         
         // Update discount fields if provided from frontend
@@ -1841,31 +1836,30 @@ export const verifyPayment = async (req, res) => {
             status: order.status,
             changedBy: order.userId,
             changedAt: new Date(),
-            note: `Payment completed. Payment Status: ${order.paymentStatus}, Amount: ₹${order.finalAmount || order.totalAmount}`
+            note: `Payment completed. Amount: ₹${order.finalAmount || order.totalAmount}`
         });
 
-        const savedOrder = await order.save();
+        await order.save();
         
         console.log('=== ORDER AFTER UPDATE ===');
-        console.log('Updated paymentStatus:', savedOrder.paymentStatus);
-        console.log('Updated status:', savedOrder.status);
-        console.log('Updated finalAmount:', savedOrder.finalAmount);
+        console.log('Updated paymentStatus:', order.paymentStatus);
+        console.log('Updated status:', order.status);
+        console.log('Updated finalAmount:', order.finalAmount);
         console.log('✅ Order updated successfully');
 
-        // 🚚 CREATE SHIPMENT (ONLY ONCE for courier)
-        if (!order.shipmentCreated && order.deliveryType === 'courier') {
-            try {
-                const warehouseId = process.env.FSHIP_WAREHOUSE_ID;
-                const shipmentRes = await createShipment(order, warehouseId);
-                order.shipment = {
-                    waybill: shipmentRes?.waybill || null,
-                    status: shipmentRes?.order_status || "created"
-                };
-                order.shipmentCreated = true;
-                await order.save();
-                console.log("🚚 Shipment created:", shipmentRes);
-            } catch (err) {
-                console.error("❌ Shipment error:", err.response?.data || err.message);
+        // ✅ CHECK IF SHIPMENT ALREADY EXISTS (from createOrderFromCart)
+        // Don't create duplicate shipment - it was already created when order was placed
+        if (order.deliveryType === 'courier') {
+            if (order.shipment?.waybill) {
+                console.log(`✅ Shipment already exists with waybill: ${order.shipment.waybill}`);
+                console.log(`   Courier: ${order.shipment.courier}`);
+                console.log(`   Status: ${order.shipment.status}`);
+            } else if (order.fship?.waybill) {
+                console.log(`✅ Shipment already exists with waybill: ${order.fship.waybill}`);
+                console.log(`   Courier: ${order.fship.courier}`);
+            } else {
+                console.log("⚠️ No shipment found. Order was created without courier shipment.");
+                console.log("   Shipment was likely created in createOrderFromCart but not saved properly.");
             }
         }
 

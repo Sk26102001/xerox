@@ -1442,8 +1442,9 @@ const statusSteps: { key: Status; label: string; icon: any; desc: string }[] = [
   { key: 'cancelled', label: 'Cancelled', icon: AlertCircle, desc: 'Your order has been cancelled' },
 ];
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL ||  "https://bookprinters.in/api/api";
+// const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:5000';
+const WS_BASE_URL = import.meta.env.VITE_WS_URL || 'ws://bookprinters.in/api/api';
 
 const getStatusIndex = (status: Status) => statusSteps.findIndex((s) => s.key === status);
 

@@ -3,286 +3,6 @@
 
 
 
-// import axios from "axios";
-
-// const BASE_URL = "https://capi-qc.fship.in";
-
-// // Create Warehouse (unchanged)
-// export const createWarehouse = async ({ warehouseName, address, city, pincode, email, contactName, phoneNumber }) => {
-//   const response = await axios.post(
-//     `${BASE_URL}/api/addwarehouse`,
-//     {
-//       WarehouseName: warehouseName,
-//       AddressLine1: address,
-//       City: city,
-//       Pincode: pincode,
-//       Email: email,
-//       ContactName: contactName,
-//       PhoneNumber: phoneNumber
-//     },
-//     {
-//       headers: { signature: process.env.FSHIP_API_KEY, "Content-Type": "application/json" }
-//     }
-//   );
-//   return response.data;
-// };
-
-// // Create Shipment (updated for /createforwardorder)
-// export const createShipment = async (order, warehouseId) => {
-//   const response = await axios.post(
-//     `${BASE_URL}/api/createforwardorder`,
-//     {
-//       customer_Name: order.customer?.name || "Customer",
-//       customer_Mobile: order.customer?.phone || "9999999999",
-//       customer_Emailid: order.customer?.email || "customer@example.com",
-//       customer_Address: order.customer?.address || "Default Address",
-//       landMark: order.customer?.landmark || "",
-//       customer_Address_Type: order.customer?.addressType || "Home",
-//       customer_PinCode: order.customer?.pincode || "000000",
-//       customer_City: order.customer?.city || "Default City",
-//       orderId: order.orderNumber,
-//       invoice_Number: order.invoiceNumber || "INV001",
-//       payment_Mode: order.paymentMode || 2, // 1=COD, 2=PREPAID
-//       express_Type: order.expressType || "surface",
-//       is_Ndd: order.isNdd || 0,
-//       order_Amount: order.amount || 0,
-//       tax_Amount: order.tax || 0,
-//       extra_Charges: order.extraCharges || 0,
-//       total_Amount: order.totalAmount || 0,
-//       cod_Amount: order.codAmount || 0,
-//       shipment_Weight: order.weight || 1,
-//       shipment_Length: order.length || 10,
-//       shipment_Width: order.width || 10,
-//       shipment_Height: order.height || 10,
-//       volumetric_Weight: order.volumetricWeight || 0,
-//       pick_Address_ID: warehouseId,
-//       return_Address_ID: warehouseId, // using same as pickup by default
-//       products: order.products?.map(p => ({
-//         productId: p.productId || "PRINT001",
-//         productName: p.productName || "Print Order",
-//         unitPrice: p.unitPrice || 0,
-//         quantity: p.quantity || 1,
-//         productCategory: p.productCategory || "Printing",
-//         hsnCode: p.hsnCode || "1234",
-//         sku: p.sku || "PRINT001",
-//         taxRate: p.taxRate || 0,
-//         productDiscount: p.productDiscount || 0
-//       })) || [
-//         {
-//           productId: "PRINT001",
-//           productName: "Print Order",
-//           unitPrice: order.totalAmount || 0,
-//           quantity: 1,
-//           productCategory: "Printing",
-//           hsnCode: "1234",
-//           sku: "PRINT001",
-//           taxRate: 0,
-//           productDiscount: 0
-//         }
-//       ],
-//       courierId: order.courierId || 0
-//     },
-//     {
-//       headers: { signature: process.env.FSHIP_API_KEY, "Content-Type": "application/json" }
-//     }
-//   );
-//   return response.data;
-// };
-
-
-
-
-
-// // services/fshipService.js
-// import axios from "axios";
-
-// const BASE_URL = "https://capi-qc.fship.in";
-// const HEADERS = {
-//   signature: process.env.FSHIP_API_KEY,
-//   "Content-Type": "application/json"
-// };
-
-// // ---------------------- WAREHOUSE ----------------------
-// export const createWarehouse = async ({ warehouseName, address, city, pincode, email, contactName, phoneNumber }) => {
-//   try {
-//     const response = await axios.post(
-//       `${BASE_URL}/api/addwarehouse`,
-//       {
-//         WarehouseName: warehouseName,
-//         AddressLine1: address,
-//         City: city,
-//         Pincode: pincode,
-//         Email: email,
-//         ContactName: contactName,
-//         PhoneNumber: phoneNumber
-//       },
-//       { headers: HEADERS }
-//     );
-//     return response.data;
-//   } catch (error) {
-//     console.error("Warehouse creation error:", error.response?.data || error.message);
-//     throw error;
-//   }
-// };
-
-// // ---------------------- SHIPMENT ----------------------
-// export const createShipment = async (order, warehouseId) => {
-//   const response = await axios.post(
-//     `${BASE_URL}/api/createforwardorder`,
-//     {
-//       customer_Name: order.customer?.name || "Customer",
-//       customer_Mobile: order.customer?.phone || "9999999999",
-//       customer_Emailid: order.customer?.email || "customer@example.com",
-//       customer_Address: order.customer?.address || "Default Address",
-//       landMark: order.customer?.landmark || "",
-//       customer_Address_Type: order.customer?.addressType || "Home",
-//       customer_PinCode: order.customer?.pincode || "000000",
-//       customer_City: order.customer?.city || "Default City",
-//       orderId: order.orderNumber,
-//       invoice_Number: order.invoiceNumber || "INV001",
-//       payment_Mode: order.paymentMode || 2, // 1=COD, 2=PREPAID
-//       express_Type: order.expressType || "surface",
-//       is_Ndd: order.isNdd || 0,
-//       order_Amount: order.amount || 0,
-//       tax_Amount: order.tax || 0,
-//       extra_Charges: order.extraCharges || 0,
-//       total_Amount: order.totalAmount || 0,
-//       cod_Amount: order.codAmount || 0,
-//       shipment_Weight: order.weight || 1,
-//       shipment_Length: order.length || 10,
-//       shipment_Width: order.width || 10,
-//       shipment_Height: order.height || 10,
-//       volumetric_Weight: order.volumetricWeight || 0,
-//       pick_Address_ID: warehouseId,
-//       return_Address_ID: warehouseId, // using same as pickup by default
-//       products: order.products?.map(p => ({
-//         productId: p.productId || "PRINT001",
-//         productName: p.productName || "Print Order",
-//         unitPrice: p.unitPrice || 0,
-//         quantity: p.quantity || 1,
-//         productCategory: p.productCategory || "Printing",
-//         hsnCode: p.hsnCode || "1234",
-//         sku: p.sku || "PRINT001",
-//         taxRate: p.taxRate || 0,
-//         productDiscount: p.productDiscount || 0
-//       })) || [
-//         {
-//           productId: "PRINT001",
-//           productName: "Print Order",
-//           unitPrice: order.totalAmount || 0,
-//           quantity: 1,
-//           productCategory: "Printing",
-//           hsnCode: "1234",
-//           sku: "PRINT001",
-//           taxRate: 0,
-//           productDiscount: 0
-//         }
-//       ],
-//       courierId: order.courierId || 0
-//     },
-//     {
-//       headers: { signature: process.env.FSHIP_API_KEY, "Content-Type": "application/json" }
-//     }
-//   );
-//   return response.data;
-// };
-
-// // Rest of your exports remain the same...
-// export const shipOrder = async (apiorderid, courierId = 0) => {
-//   const response = await axios.post(
-//     `${BASE_URL}/api/shiporder`,
-//     { apiorderid, courierId },
-//     { headers: HEADERS }
-//   );
-//   return response.data;
-// };
-
-// export const generateShippingLabel = async (waybill) => {
-//   const response = await axios.post(
-//     `${BASE_URL}/api/shippinglabel`,
-//     { waybill },
-//     { headers: HEADERS }
-//   );
-//   return response.data;
-// };
-
-// export const registerPickup = async (waybills = []) => {
-//   const response = await axios.post(
-//     `${BASE_URL}/api/registerpickup`,
-//     { waybills },
-//     { headers: HEADERS }
-//   );
-//   return response.data;
-// };
-
-// export const getShipmentStatus = async (waybill) => {
-//   const response = await axios.post(
-//     `${BASE_URL}/api/shipmentsummary`,
-//     { waybill },
-//     { headers: HEADERS }
-//   );
-//   return response.data;
-// };
-
-// export const getTrackingHistory = async (waybill) => {
-//   const response = await axios.post(
-//     `${BASE_URL}/api/trackinghistory`,
-//     { waybill },
-//     { headers: HEADERS }
-//   );
-//   return response.data;
-// };
-
-// export const cancelShipment = async (waybill, reason = "") => {
-//   const response = await axios.post(
-//     `${BASE_URL}/api/cancelorder`,
-//     { waybill, reason },
-//     { headers: HEADERS }
-//   );
-//   return response.data;
-// };
-
-// export const calculateRate = async (payload) => {
-//   const response = await axios.post(
-//     `${BASE_URL}/api/ratecalculator`,
-//     payload,
-//     { headers: HEADERS }
-//   );
-//   return response.data;
-// };
-
-// export const checkPincodeServiceability = async (source_Pincode, destination_Pincode) => {
-//   const response = await axios.post(
-//     `${BASE_URL}/api/pincodeserviceability`,
-//     { source_Pincode, destination_Pincode },
-//     { headers: HEADERS }
-//   );
-//   return response.data;
-// };
-
-// export const reattemptOrder = async ({
-//   apiorderid,
-//   action = "re-attempt",
-//   reattempt_date,
-//   contact_name,
-//   complete_address,
-//   landmark = "",
-//   mobilenumber = "",
-//   remarks = ""
-// }) => {
-//   const response = await axios.post(
-//     `${BASE_URL}/api/reattemptorder`,
-//     { apiorderid, action, reattempt_date, contact_name, complete_address, landmark, mobilenumber, remarks },
-//     { headers: HEADERS }
-//   );
-//   return response.data;
-// };
-
-
-
-
-
-// services/fshipService.js
 import axios from "axios";
 
 const BASE_URL = "https://capi-qc.fship.in";
@@ -314,89 +34,305 @@ export const createWarehouse = async ({ warehouseName, address, city, pincode, e
   }
 };
 
-// ---------------------- SHIPMENT ----------------------
-// services/fshipService.js - Complete createShipment with full debugging
+// Add this function to fshipService.js
+// export const getAllWarehouses = async () => {
+//   try {
+//     console.log("\n📦 FETCHING ALL WAREHOUSES");
+//     const response = await axios.post(
+//       `${BASE_URL}/api/getwarehouses`,
+//       {},
+//       { headers: HEADERS }
+//     );
+//     console.log("Warehouses:", JSON.stringify(response.data, null, 2));
+//     return response.data;
+//   } catch (error) {
+//     console.error("Get warehouses error:", error.response?.data || error.message);
+//     throw error;
+//   }
+// };
+
+
+// export const createShipment = async (order, warehouseId) => {
+//   try {
+//     console.log("\n" + "=".repeat(60));
+//     console.log("📦 CREATING SHIPMENT");
+//     console.log("=".repeat(60));
+    
+//     // ✅ Get delivery charge
+//     let deliveryCharge = 0;
+//     if (order.deliveryCharge && order.deliveryCharge > 0) {
+//       deliveryCharge = parseFloat(order.deliveryCharge);
+//       console.log(`✅ Using provided delivery charge: ₹${deliveryCharge}`);
+//     } else if (order.extra_Charges && order.extra_Charges > 0) {
+//       deliveryCharge = parseFloat(order.extra_Charges);
+//       console.log(`✅ Using extra_Charges: ₹${deliveryCharge}`);
+//     } else {
+//       console.log("⚠️ No delivery charge provided, using default ₹50");
+//       deliveryCharge = 50;
+//     }
+    
+//     // ✅ Calculate product value from totalAmount (which includes discount)
+//     const totalAmountFromOrder = parseFloat(order.totalAmount || order.finalAmount || 0);
+//     const calculatedProductValue = totalAmountFromOrder - deliveryCharge;
+    
+//     console.log(`\n📊 ORDER AMOUNT BREAKDOWN:`);
+//     console.log(`  Order Total Amount: ₹${totalAmountFromOrder}`);
+//     console.log(`  Delivery Charge: ₹${deliveryCharge}`);
+//     console.log(`  Calculated Product Value: ₹${calculatedProductValue}`);
+    
+//     // ✅ Transform items with CORRECT product values for FShip API
+//     let products = [];
+//     let totalProductValue = 0;
+    
+//     if (order.items && order.items.length > 0) {
+//       // Distribute calculated product value across items
+//       const valuePerItem = calculatedProductValue / order.items.length;
+      
+//       products = order.items.map((item, index) => {
+//         const productValue = valuePerItem;
+//         totalProductValue += productValue;
+        
+//         console.log(`  Item ${index + 1}: Using value ₹${productValue.toFixed(2)} (original amount: ${item.amount})`);
+        
+//         const productName = `${item.pages}p × ${item.copies}c | ${item.printColor === 'color' ? 'Color' : 'B&W'} | ${item.bindingType || 'No binding'}`;
+        
+//         // ✅ CORRECT PRODUCT STRUCTURE FOR FSHIP API
+//         return {
+//           productName: productName.substring(0, 100),     // ✅ lowercase 'p'
+//           sku: `${item.paperSize || 'A4'}_${item.printColor}_${item.bindingType || 'none'}`,  // ✅ 'sku'
+//           quantity: item.copies || 1,                    // ✅ 'quantity'
+//           // unitPrice: Math.round(productValue / (item.copies || 1)),
+//           unitPrice: parseFloat((productValue / (item.copies || 1)).toFixed(2)),  // ✅ 'unitPrice'
+//           hsnCode: "4901",                               // ✅ 'hsnCode'
+//           taxRate: 5,                                    // ✅ 'taxRate'
+//           productDiscount: 0,
+//           productCategory: "Printing"
+//         };
+//       });
+//     } else {
+//       totalProductValue = calculatedProductValue;
+//       products = [{
+//         productName: "Print Order",
+//         sku: "PRINT001",
+//         quantity: 1,
+//         unitPrice: Math.round(calculatedProductValue),
+//         hsnCode: "4901",
+//         taxRate: 5,
+//         productDiscount: 0,
+//         productCategory: "Printing"
+//       }];
+      
+//     }
+    
+//     // Calculate total weight (at shipment level, not in products)
+//     let totalWeight = order.orderWeight || 0.5;
+//     if (totalWeight <= 0) {
+//       totalWeight = 0.5;
+//     }
+//     totalWeight = parseFloat(totalWeight.toFixed(2));
+    
+//     // Determine payment mode
+//     let paymentMode = 2; // Prepaid
+//     if (order.paymentMode === 1 || order.paymentMethod === 'cod' || order.paymentMode === 'cod') {
+//       paymentMode = 1;
+//     }
+    
+//     // ✅ Calculate final amounts for FShip
+//     // const orderAmount = Math.round(totalProductValue);  // Product value only
+//     // const totalAmount = Math.round(orderAmount + deliveryCharge);  // Grand total
+
+//     const orderAmount = parseFloat(totalProductValue.toFixed(2));
+// const totalAmount = parseFloat((orderAmount + deliveryCharge).toFixed(2));
+    
+//     console.log(`\n💰 FINAL AMOUNTS FOR FSHIP:`);
+//     console.log(`  order_Amount (Products): ₹${orderAmount}`);
+//     console.log(`  extra_Charges (Shipping): ₹${deliveryCharge}`);
+//     console.log(`  total_Amount: ₹${totalAmount}`);
+//     console.log(`  Products:`, products.map(p => ({ 
+//       productName: p.productName, 
+//       unitPrice: p.unitPrice, 
+//       quantity: p.quantity 
+//     })));
+    
+//     // ✅ Build payload with CORRECT field names
+//     const payload = {
+//       customer_Name: order.customer?.name || "Customer",
+//       customer_Mobile: order.customer?.phone || "9876543210",
+//       customer_Emailid: order.customer?.email || "customer@example.com",
+//       customer_Address: order.customer?.address || "Address",
+//       landMark: order.customer?.landmark || "",
+//       customer_Address_Type: order.customer?.addressType || "Home",
+//       customer_PinCode: order.customer?.pincode || "560001",
+//       customer_City: order.customer?.city || "City",
+//       orderId: order.orderNumber || `ORD${Date.now()}`,
+//       invoice_Number: order.invoiceNumber || `INV${Date.now()}`,
+//       payment_Mode: paymentMode,
+//       express_Type: order.expressType || "surface",
+//       is_Ndd: order.isNdd || 0,
+//       order_Amount: orderAmount,
+//       tax_Amount: order.taxAmount || 0,
+//       // extra_Charges: deliveryCharge,
+//       extra_Charges: 0,
+//       total_Amount: totalAmount,
+//       cod_Amount: paymentMode === 1 ? totalAmount : 0,
+//       shipment_Weight: totalWeight,
+//       shipment_Length: order.length || 10,
+//       shipment_Width: order.width || 10,
+//       shipment_Height: order.height || 10,
+//       volumetric_Weight: order.volumetricWeight || 0,
+//       latitude: order.latitude || 0,
+//       longitude: order.longitude || 0,
+//       pick_Address_ID: parseInt(warehouseId),
+//       return_Address_ID: parseInt(warehouseId),
+//       products: products,  // ✅ Now has correct structure
+//       courierId: order.courierId || 0
+//     };
+    
+//     console.log("\n📤 SENDING TO FSHIP:", JSON.stringify({
+//       order_Amount: payload.order_Amount,
+//       extra_Charges: payload.extra_Charges,
+//       total_Amount: payload.total_Amount,
+//       products: products.map(p => ({ 
+//         productName: p.productName, 
+//         unitPrice: p.unitPrice, 
+//         quantity: p.quantity,
+//         hsnCode: p.hsnCode,
+//         taxRate: p.taxRate
+//       }))
+//     }, null, 2));
+    
+//     const response = await axios.post(
+//       `${BASE_URL}/api/createforwardorder`,
+//       payload,
+//       { headers: HEADERS, timeout: 30000 }
+//     );
+    
+//     console.log("\n✅ FSHIP RESPONSE:", JSON.stringify(response.data, null, 2));
+//     return response.data;
+    
+//   } catch (error) {
+//     console.error("\n❌ SHIPMENT CREATION FAILED:", error.response?.data || error.message);
+//     throw error;
+//   }
+// };
 
 export const createShipment = async (order, warehouseId) => {
   try {
-    console.log("\n" + "=".repeat(50));
+    console.log("\n" + "=".repeat(60));
     console.log("📦 CREATING SHIPMENT");
-    console.log("=".repeat(50));
-    console.log("Warehouse ID:", warehouseId);
-    console.log("Warehouse ID Type:", typeof warehouseId);
-    console.log("Order Number:", order.orderNumber);
+    console.log("=".repeat(60));
     
-    // Transform items to products format if needed
-    let products = [];
-    
-    if (order.items && order.items.length > 0) {
-      products = order.items.map((item, index) => {
-        const totalPages = item.pages * (item.copies || 1);
-        let pricePerItem = 0;
-        
-        if (item.printColor === "color") {
-          pricePerItem = totalPages * 5;
-        } else {
-          pricePerItem = totalPages * 2;
-        }
-        
-        if (item.bindingType === "spiral") pricePerItem += 50;
-        if (item.bindingType === "perfect") pricePerItem += 100;
-        if (item.bindingType === "hardcover") pricePerItem += 200;
-        
-        if (item.lamination === "matte" || item.lamination === "glossy") {
-          pricePerItem += totalPages * 3;
-        }
-        
-        return {
-          productId: `ITEM_${index + 1}`,
-          productName: `${item.pages} pages, ${item.copies} copies - ${item.printColor} ${item.printSide} on ${item.paperType}`,
-          unitPrice: pricePerItem,
-          quantity: 1,
-          productCategory: "Printing",
-          hsnCode: "4901",
-          sku: `${item.paperSize}_${item.paperType}_${item.printColor}_${item.bindingType}`,
-          taxRate: 18,
-          productDiscount: 0
-        };
-      });
-    } else if (order.products && order.products.length > 0) {
-      products = order.products;
+    // ✅ Get delivery charge
+    let deliveryCharge = 0;
+    if (order.deliveryCharge && order.deliveryCharge > 0) {
+      deliveryCharge = parseFloat(order.deliveryCharge);
+      console.log(`✅ Using provided delivery charge: ₹${deliveryCharge}`);
+    } else if (order.extra_Charges && order.extra_Charges > 0) {
+      deliveryCharge = parseFloat(order.extra_Charges);
+      console.log(`✅ Using extra_Charges: ₹${deliveryCharge}`);
     } else {
-      products = [{
-        productId: "PRINT001",
-        productName: "Print Order",
-        unitPrice: order.totalAmount || 100,
-        quantity: 1,
-        productCategory: "Printing",
-        hsnCode: "4901",
-        sku: "PRINT001",
-        taxRate: 18,
-        productDiscount: 0
-      }];
+      console.log("⚠️ No delivery charge provided, using default ₹50");
+      deliveryCharge = 50;
     }
     
-    // Build payload exactly as per API documentation
+    // ✅ Calculate product value from totalAmount
+    const totalAmountFromOrder = parseFloat(order.totalAmount || order.finalAmount || 0);
+    let calculatedProductValue = totalAmountFromOrder - deliveryCharge;
+    
+    console.log(`\n📊 ORDER AMOUNT BREAKDOWN:`);
+    console.log(`  Order Total Amount: ₹${totalAmountFromOrder}`);
+    console.log(`  Delivery Charge: ₹${deliveryCharge}`);
+    console.log(`  Calculated Product Value: ₹${calculatedProductValue}`);
+    
+    // ✅ Transform items with CORRECT product values for FShip API
+    let products = [];
+    let totalProductValue = 0;
+    
+    if (order.items && order.items.length > 0) {
+      const valuePerItem = calculatedProductValue / order.items.length;
+      
+      products = order.items.map((item, index) => {
+        const productValue = valuePerItem;
+        totalProductValue += productValue;
+        
+        console.log(`  Item ${index + 1}: Total value ₹${productValue.toFixed(2)} for ${item.copies} copies`);
+        
+        const productName = `${item.pages}p × ${item.copies}c | ${item.printColor === 'color' ? 'Color' : 'B&W'}`;
+        
+        // Send as single line item with total value (not unit price)
+        return {
+          productName: productName.substring(0, 100),
+          sku: `${item.paperSize || 'A4'}_${item.printColor}_${item.bindingType || 'none'}`,
+          quantity: 1,  // ← Set to 1
+          unitPrice: parseFloat(productValue.toFixed(2)),  // ← Send total value
+          hsnCode: "4901",
+          taxRate: 5,
+          productDiscount: 0,
+          productCategory: "Printing"
+        };
+      });
+    }
+    
+    // ✅ ADD SHIPPING AS A PRODUCT
+    if (deliveryCharge > 0) {
+      products.push({
+        productName: "Shipping Charges",
+        sku: "SHIPPING",
+        quantity: 1,
+        unitPrice: parseFloat(deliveryCharge.toFixed(2)),
+        hsnCode: "4901",
+        taxRate: 0,
+        productDiscount: 0,
+        productCategory: "Shipping"
+      });
+      totalProductValue += deliveryCharge;
+      console.log(`✅ Added shipping as product: ₹${deliveryCharge}`);
+    }
+    
+    // Calculate total weight
+    let totalWeight = order.orderWeight || 0.5;
+    totalWeight = parseFloat(totalWeight.toFixed(2));
+    
+    // Determine payment mode
+    let paymentMode = 2; // Prepaid
+    if (order.paymentMode === 1 || order.paymentMethod === 'cod' || order.paymentMode === 'cod') {
+      paymentMode = 1;
+    }
+    
+    // ✅ Calculate final amounts
+    const orderAmount = parseFloat(totalProductValue.toFixed(2));
+    const totalAmount = parseFloat(orderAmount.toFixed(2));  // Shipping already included in products
+    
+    console.log(`\n💰 FINAL AMOUNTS FOR FSHIP:`);
+    console.log(`  order_Amount: ₹${orderAmount}`);
+    console.log(`  extra_Charges: ₹0 (shipping added as product)`);
+    console.log(`  total_Amount: ₹${totalAmount}`);
+    console.log(`  Products:`);
+    products.forEach((p, i) => {
+      console.log(`    ${i + 1}. ${p.productName}: ₹${p.unitPrice}`);
+    });
+    
+    // ✅ Build payload
     const payload = {
-      customer_Name: order.customer?.name || "Test Customer",
+      customer_Name: order.customer?.name || "Customer",
       customer_Mobile: order.customer?.phone || "9876543210",
-      customer_Emailid: order.customer?.email || "test@example.com",
-      customer_Address: order.customer?.address || "123 Test Street",
+      customer_Emailid: order.customer?.email || "customer@example.com",
+      customer_Address: order.customer?.address || "Address",
       landMark: order.customer?.landmark || "",
       customer_Address_Type: order.customer?.addressType || "Home",
       customer_PinCode: order.customer?.pincode || "560001",
-      customer_City: order.customer?.city || "Bangalore",
-      orderId: order.orderNumber,
+      customer_City: order.customer?.city || "City",
+      orderId: order.orderNumber || `ORD${Date.now()}`,
       invoice_Number: order.invoiceNumber || `INV${Date.now()}`,
-      payment_Mode: order.paymentMode || 2,
+      payment_Mode: paymentMode,
       express_Type: order.expressType || "surface",
       is_Ndd: order.isNdd || 0,
-      order_Amount: order.amount || order.totalAmount || 0,
-      tax_Amount: order.tax || 0,
-      extra_Charges: order.extraCharges || 0,
-      total_Amount: order.totalAmount || 0,
-      cod_Amount: order.codAmount || 0,
-      shipment_Weight: order.weight || 0.5,
+      order_Amount: orderAmount,
+      tax_Amount: order.taxAmount || 0,
+      extra_Charges: 0,  // ← Set to 0 since shipping is a product
+      total_Amount: totalAmount,
+      cod_Amount: paymentMode === 1 ? totalAmount : 0,
+      shipment_Weight: totalWeight,
       shipment_Length: order.length || 10,
       shipment_Width: order.width || 10,
       shipment_Height: order.height || 10,
@@ -409,66 +345,32 @@ export const createShipment = async (order, warehouseId) => {
       courierId: order.courierId || 0
     };
     
-    console.log("\n📤 SENDING PAYLOAD TO FSHIP API:");
-    console.log(JSON.stringify(payload, null, 2));
-    console.log("\n🔗 API URL:", `${BASE_URL}/api/createforwardorder`);
-    console.log("🔑 API Key Present:", !!process.env.FSHIP_API_KEY);
+    console.log("\n📤 SENDING TO FSHIP - PRODUCT SUMMARY:");
+    products.forEach((p, i) => {
+      console.log(`  ${i + 1}. ${p.productName}: Qty ${p.quantity} × ₹${p.unitPrice} = ₹${p.quantity * p.unitPrice}`);
+    });
     
     const response = await axios.post(
       `${BASE_URL}/api/createforwardorder`,
       payload,
-      { 
-        headers: HEADERS,
-        timeout: 30000 // 30 second timeout
-      }
+      { headers: HEADERS, timeout: 30000 }
     );
     
-    console.log("\n✅ API RESPONSE RECEIVED:");
-    console.log("Status Code:", response.status);
-    console.log("Response Data:", JSON.stringify(response.data, null, 2));
-    console.log("=".repeat(50) + "\n");
-    
+    console.log("\n✅ FSHIP RESPONSE:", JSON.stringify(response.data, null, 2));
     return response.data;
     
   } catch (error) {
-    console.error("\n❌ SHIPMENT CREATION FAILED:");
-    console.error("=".repeat(50));
-    
-    if (error.response) {
-      // The request was made and the server responded with a status code
-      console.error("HTTP Status Code:", error.response.status);
-      console.error("HTTP Status Text:", error.response.statusText);
-      console.error("Response Headers:", JSON.stringify(error.response.headers, null, 2));
-      console.error("Response Data:", JSON.stringify(error.response.data, null, 2));
-      
-      // If there's a validation error, log it clearly
-      if (error.response.data && error.response.data.errors) {
-        console.error("\n📋 VALIDATION ERRORS:");
-        Object.keys(error.response.data.errors).forEach(key => {
-          console.error(`  - ${key}: ${error.response.data.errors[key].join(', ')}`);
-        });
-      }
-      
-      throw error;
-    } else if (error.request) {
-      // The request was made but no response was received
-      console.error("No response received from server");
-      console.error("Request:", error.request);
-      throw new Error("No response from fship API - Check network connection");
-    } else {
-      // Something happened in setting up the request
-      console.error("Error Message:", error.message);
-      throw error;
-    }
+    console.error("\n❌ SHIPMENT CREATION FAILED:", error.response?.data || error.message);
+    throw error;
   }
 };
 
 // ---------------------- SHIP ORDER ----------------------
 export const shipOrder = async (apiorderid, courierId = 0) => {
   try {
-    console.log("\n" + "=".repeat(50));
+    console.log("\n" + "=".repeat(60));
     console.log("🚚 SHIPPING ORDER");
-    console.log("=".repeat(50));
+    console.log("=".repeat(60));
     console.log("API Order ID:", apiorderid);
     console.log("Courier ID:", courierId);
     
@@ -477,8 +379,6 @@ export const shipOrder = async (apiorderid, courierId = 0) => {
       courierId: parseInt(courierId) 
     };
     
-    console.log("📤 Sending to ship-order API:", JSON.stringify(payload, null, 2));
-    
     const response = await axios.post(
       `${BASE_URL}/api/shiporder`,
       payload,
@@ -486,35 +386,52 @@ export const shipOrder = async (apiorderid, courierId = 0) => {
     );
     
     console.log("✅ Ship Order Response:", JSON.stringify(response.data, null, 2));
-    console.log("=".repeat(50) + "\n");
-    
     return response.data;
   } catch (error) {
-    console.error("\n❌ SHIP ORDER FAILED:");
-    console.error("=".repeat(50));
-    
-    if (error.response) {
-      console.error("Status Code:", error.response.status);
-      console.error("Response Data:", JSON.stringify(error.response.data, null, 2));
-    } else if (error.request) {
-      console.error("No response received");
-    } else {
-      console.error("Error:", error.message);
-    }
-    console.error("=".repeat(50) + "\n");
-    
+    console.error("Ship order failed:", error.response?.data || error.message);
     throw error;
   }
 };
+
 // ---------------------- SHIPPING LABEL ----------------------
 export const generateShippingLabel = async (waybill) => {
   try {
+    console.log("\n" + "=".repeat(60));
+    console.log("🏷️ GENERATING SHIPPING LABEL");
+    console.log("=".repeat(60));
+    console.log("Waybill:", waybill);
+    
     const response = await axios.post(
       `${BASE_URL}/api/shippinglabel`,
-      { waybill },
+      { waybill: waybill },
       { headers: HEADERS }
     );
-    return response.data;
+    
+    let labelUrl = null;
+    
+    if (response.data.labelurl) {
+      labelUrl = response.data.labelurl;
+    } else if (response.data.labelUrl) {
+      labelUrl = response.data.labelUrl;
+    } else if (response.data.resultDetails) {
+      if (response.data.resultDetails[waybill]) {
+        labelUrl = response.data.resultDetails[waybill].labelUrl || response.data.resultDetails[waybill].labelurl;
+      } else if (Array.isArray(response.data.resultDetails)) {
+        const found = response.data.resultDetails.find(item => 
+          item.waybill === waybill || item.AWBNumber === waybill
+        );
+        if (found) labelUrl = found.labelUrl || found.labelurl;
+      }
+    }
+    
+    console.log("Extracted Label URL:", labelUrl);
+    
+    return {
+      status: response.data.status === "success" || response.data.status === true,
+      labelurl: labelUrl,
+      response: response.data.response || "Label generated successfully",
+      rawResponse: response.data
+    };
   } catch (error) {
     console.error("Shipping label error:", error.response?.data || error.message);
     throw error;
@@ -631,6 +548,74 @@ export const reattemptOrder = async ({
     return response.data;
   } catch (error) {
     console.error("Reattempt order error:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
+
+// Add to your existing fshipService.js
+
+// ---------------------- UPDATE WAREHOUSE ----------------------
+export const updateWarehouse = async ({
+  warehouseId,
+  warehouseName,
+  contactName,
+  addressLine1,
+  addressLine2 = "",
+  pincode,
+  city,
+  stateId,
+  countryId = 0,
+  phoneNumber,
+  email
+}) => {
+  try {
+    console.log("\n" + "=".repeat(60));
+    console.log("🏭 UPDATING WAREHOUSE");
+    console.log("=".repeat(60));
+    console.log(`Warehouse ID: ${warehouseId}`);
+    console.log(`Address: ${addressLine1}, ${city}, ${pincode}`);
+    
+    const payload = {
+      warehouseId: parseInt(warehouseId),
+      warehouseName: warehouseName,
+      contactName: contactName,
+      addressLine1: addressLine1,
+      addressLine2: addressLine2,
+      pincode: pincode,
+      city: city,
+      stateId: parseInt(stateId),
+      countryId: parseInt(countryId),
+      phoneNumber: phoneNumber,
+      email: email
+    };
+    
+    const response = await axios.post(
+      `${BASE_URL}/api/updatewarehouse`,
+      payload,
+      { headers: HEADERS }
+    );
+    
+    console.log("✅ Warehouse updated successfully");
+    return response.data;
+    
+  } catch (error) {
+    console.error("❌ Warehouse update failed:", error.response?.data || error.message);
+    throw error;
+  }
+};
+
+// ---------------------- GET ALL WAREHOUSES ----------------------
+export const getAllWarehouses = async () => {
+  try {
+    const response = await axios.post(
+      `${BASE_URL}/api/getwarehouses`,
+      {},
+      { headers: HEADERS }
+    );
+    return response.data;
+  } catch (error) {
+    console.error("Get warehouses error:", error.response?.data || error.message);
     throw error;
   }
 };

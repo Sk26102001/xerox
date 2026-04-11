@@ -6,5 +6,5 @@ node_modules/
 
 # Optional (good practice)
 dist/
-build/
+bui
 .DS_Store

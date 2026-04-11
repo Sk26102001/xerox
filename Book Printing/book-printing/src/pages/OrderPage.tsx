@@ -2132,97 +2132,89 @@ export default function OrderPage() {
   const price = itemPrices[0];
   const totalWithDelivery = orderMode === 'single' ? price?.grandTotal + deliveryCharge : totalPrintingCost + totalGst;
 
-  const uploadFileToServer = async (file: File, itemIndex: number): Promise<void> => {
-    return new Promise(async (resolve, reject) => {
-      const id = Math.random().toString(36).slice(2);
-      
-      const newFile: UploadedFile = { 
-        file, 
-        id, 
-        progress: 0, 
-        status: 'uploading',
-        url: ''
-      };
-      
+  // Replace the entire uploadFileToServer function
+// Replace your existing uploadFileToServer with this version
+const uploadFileToServer = async (file: File, itemIndex: number): Promise<void> => {
+  const id = Math.random().toString(36).slice(2);
+  
+  const newFile: UploadedFile = { 
+    file, 
+    id, 
+    progress: 0, 
+    status: 'uploading',
+    url: ''
+  };
+  
+  setItems(prev => prev.map((item, i) => 
+    i === itemIndex ? { ...item, files: [...item.files, newFile] } : item
+  ));
+
+  try {
+    // Use the imported uploadFile function from your service
+    const fileUrl = await uploadFile(file, (progress) => {
       setItems(prev => prev.map((item, i) => 
-        i === itemIndex ? { ...item, files: [...item.files, newFile] } : item
+        i === itemIndex ? { 
+          ...item, 
+          files: item.files.map(f => 
+            f.id === id ? { ...f, progress } : f
+          ) 
+        } : item
       ));
-
-      try {
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        const xhr = new XMLHttpRequest();
-        
-        xhr.upload.addEventListener('progress', (event) => {
-          if (event.lengthComputable) {
-            const percent = Math.round((event.loaded / event.total) * 100);
-            setItems(prev => prev.map((item, i) => 
-              i === itemIndex ? { 
-                ...item, 
-                files: item.files.map(f => 
-                  f.id === id ? { ...f, progress: percent } : f
-                ) 
-              } : item
-            ));
-          }
-        });
-        
-        const response = await new Promise<{ data: any }>((resolveXhr, rejectXhr) => {
-          xhr.open('POST', `${API.defaults.baseURL}/upload`, true);
-          xhr.setRequestHeader('Authorization', `Bearer ${localStorage.getItem('token')}`);
-          
-          xhr.onload = () => {
-            if (xhr.status === 200) {
-              resolveXhr({ data: JSON.parse(xhr.responseText) });
-            } else {
-              rejectXhr(new Error('Upload failed'));
-            }
-          };
-          
-          xhr.onerror = () => rejectXhr(new Error('Network error'));
-          xhr.send(formData);
-        });
-        
-        const fileUrl = response.data.url;
-        
-        setItems(prev => prev.map((item, i) => 
-          i === itemIndex ? { 
-            ...item, 
-            files: item.files.map(f => 
-              f.id === id ? { ...f, progress: 100, status: 'done', url: fileUrl } : f
-            ) 
-          } : item
-        ));
-        resolve();
-      } catch (error) {
-        setItems(prev => prev.map((item, i) => 
-          i === itemIndex ? { 
-            ...item, 
-            files: item.files.map(f => 
-              f.id === id ? { ...f, status: 'error', error: 'Upload failed' } : f
-            ) 
-          } : item
-        ));
-        reject(error);
-      }
     });
-  };
+    
+    setItems(prev => prev.map((item, i) => 
+      i === itemIndex ? { 
+        ...item, 
+        files: item.files.map(f => 
+          f.id === id ? { ...f, progress: 100, status: 'done', url: fileUrl } : f
+        ) 
+      } : item
+    ));
+    
+    toast.success(`${file.name} uploaded successfully`);
+  } catch (error) {
+    console.error('Upload error:', error);
+    setItems(prev => prev.map((item, i) => 
+      i === itemIndex ? { 
+        ...item, 
+        files: item.files.map(f => 
+          f.id === id ? { ...f, status: 'error', error: error instanceof Error ? error.message : 'Upload failed' } : f
+        ) 
+      } : item
+    ));
+    toast.error(error instanceof Error ? error.message : `Failed to upload ${file.name}`);
+  }
+};
 
-  const handleFiles = async (newFiles: FileList | File[]) => {
-    const fileArray = Array.from(newFiles);
-    for (const file of fileArray) {
-      if (file.size > MAX_FILE_SIZE) {
-        toast.error(`${file.name} is too large. Max size is 500MB.`);
-        continue;
-      }
-      if (!ALLOWED_TYPES.includes(file.type)) {
-        toast.error(`${file.name} is not a supported file type.`);
-        continue;
-      }
-      await uploadFileToServer(file, activeItemIndex);
+// Your handleFiles function (keep as is - it's correct)
+const handleFiles = async (newFiles: FileList | File[]) => {
+  // Check if terms are accepted first
+  if (!termsAccepted) {
+    toast.error('Please accept Terms & Conditions before uploading files');
+    return;
+  }
+  
+  const fileArray = Array.from(newFiles);
+  
+  for (const file of fileArray) {
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error(`${file.name} is too large. Max size is 500MB.`);
+      continue;
     }
-  };
+    
+    // Improved file type validation
+    const fileExtension = '.' + file.name.split('.').pop()?.toLowerCase();
+    const isValidExtension = ALLOWED_EXTENSIONS.includes(fileExtension);
+    const isValidType = ALLOWED_TYPES.includes(file.type);
+    
+    if (!isValidExtension && !isValidType) {
+      toast.error(`${file.name} is not a supported file type.`);
+      continue;
+    }
+    
+    await uploadFileToServer(file, activeItemIndex);
+  }
+};
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();

@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 // const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/shipping';
-const API_BASE_URL = "http://localhost:5000/api"; 
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://bookprinters.in/api/api/shipping'; 
 
 export interface TrackingData {
   orderId: string;

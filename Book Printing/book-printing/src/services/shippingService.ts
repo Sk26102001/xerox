@@ -159,7 +159,8 @@ class ShippingService {
 
   constructor() {
     this.api = axios.create({
-      baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api/shipping',
+      // baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api/shipping',
+      baseURL: import.meta.env.VITE_API_URL || 'https://bookprinters.in/api/api/shipping',
       headers: {
         'Content-Type': 'application/json',
       },

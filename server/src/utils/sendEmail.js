@@ -146,6 +146,9 @@ export const sendOtpEmail = async (email, otp) => {
   }
 };
 
+
+
+
 // import nodemailer from "nodemailer";
 // import dotenv from "dotenv";
 

@@ -13,7 +13,7 @@
 import axios from "axios";
 
 const apiClient = axios.create({
-  baseURL: "http://localhost:5000/api", // 🔥 your backend URL
+  baseURL: import.meta.env.VITE_API_URL ||  "https://bookprinters.in/api/api", // 🔥 your backend URL
   headers: {
     "Content-Type": "application/json",
   },
