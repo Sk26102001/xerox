@@ -5486,34 +5486,34 @@ export const trackByOrderNumberController = async (req, res) => {
 
 // // Add these functions to shippingController.js
 
-// // ---------------------- GET ALL WAREHOUSES CONTROLLER ----------------------
-// export const getAllWarehousesController = async (req, res) => {
-//   try {
-//     console.log("\n=== GET ALL WAREHOUSES ===");
+// ---------------------- GET ALL WAREHOUSES CONTROLLER ----------------------
+export const getAllWarehousesController = async (req, res) => {
+  try {
+    console.log("\n=== GET ALL WAREHOUSES ===");
     
-//     const result = await getAllWarehouses();
+    const result = await getAllWarehouses();
     
-//     if (result && result.status === true) {
-//       res.status(200).json({
-//         success: true,
-//         data: result.warehouses || [],
-//         message: "Warehouses fetched successfully"
-//       });
-//     } else {
-//       res.status(400).json({
-//         success: false,
-//         message: result?.response || "Failed to fetch warehouses"
-//       });
-//     }
-//   } catch (error) {
-//     console.error("Get all warehouses error:", error);
-//     res.status(500).json({
-//       success: false,
-//       message: "Failed to fetch warehouses",
-//       error: error.message
-//     });
-//   }
-// };
+    if (result && result.status === true) {
+      res.status(200).json({
+        success: true,
+        data: result.warehouses || [],
+        message: "Warehouses fetched successfully"
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: result?.response || "Failed to fetch warehouses"
+      });
+    }
+  } catch (error) {
+    console.error("Get all warehouses error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch warehouses",
+      error: error.message
+    });
+  }
+};
 
 // ---------------------- UPDATE WAREHOUSE CONTROLLER ----------------------
 export const updateWarehouseAddress = async (req, res) => {
