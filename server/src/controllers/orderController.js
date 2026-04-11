@@ -4341,7 +4341,7 @@ export const createOrderFromCart = async (req, res) => {
         });
         
         const shippingResponse = await axios.post(
-          `${process.env.BACKEND_URL || 'http://localhost:5000'}/api/shipping/create-shipment`,
+          `${process.env.BACKEND_URL || 'https://xerox-2.onrender.com'}/api/shipping/create-shipment`,
           {
             order: fshipOrderData,
             warehouseId: parseInt(process.env.FSHIP_WAREHOUSE_ID || "38020")
