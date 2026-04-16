@@ -440,6 +440,7 @@ import reportRoutes from "./routes/reportRoutes.js";
 import shippingRoutes from "./routes/shippingRoutes.js";
 import paymentRoutes from "./routes/paymentRoutes.js";
 import testimonialRoutes from './routes/testimonialRoutes.js';
+import contactRoutes from './routes/contactRoutes.js';
 import auth from "./middleware/auth.js";
 import { uploadFile, uploadSingleFile } from './controllers/orderController.js';
 import { setupWebSocketServer, broadcastOrderUpdate } from './websocket.js';
@@ -511,6 +512,7 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/shipping", shippingRoutes);
 app.use("/api/testimonials", testimonialRoutes);
 app.use("/api/payment", paymentRoutes);
+app.use('/api/contact', contactRoutes);
 
 // File upload route
 app.post('/api/upload', auth, uploadSingleFile, uploadFile);

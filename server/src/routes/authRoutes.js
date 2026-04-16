@@ -32,6 +32,39 @@
 // export default router;
 
 
+
+
+
+
+
+// import express from "express";
+// import { 
+//   register, 
+//   login, 
+//   forgotPassword, 
+//   resetPassword,
+//   getCurrentUser,
+//   updateProfile
+// } from "../controllers/authController.js";
+// import auth from "../middleware/auth.js";
+
+// const router = express.Router();
+
+// // Public routes (no auth required)
+// router.post("/register", register);
+// router.post("/login", login);
+// router.post("/forgot-password", forgotPassword);
+// router.post("/reset-password", resetPassword);
+
+// // Protected routes (auth required)
+// router.get("/me", auth, getCurrentUser);
+// router.put("/update-profile", auth, updateProfile);
+
+// export default router;
+
+
+
+
 import express from "express";
 import { 
   register, 
@@ -39,19 +72,23 @@ import {
   forgotPassword, 
   resetPassword,
   getCurrentUser,
-  updateProfile
+  updateProfile,
+  sendRegistrationOtp,    // new
+  verifyRegistrationOtp    // new
 } from "../controllers/authController.js";
 import auth from "../middleware/auth.js";
 
 const router = express.Router();
 
-// Public routes (no auth required)
+// Public routes
 router.post("/register", register);
 router.post("/login", login);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
+router.post("/send-registration-otp", sendRegistrationOtp);   // ✅ new
+router.post("/verify-registration-otp", verifyRegistrationOtp); // ✅ new
 
-// Protected routes (auth required)
+// Protected routes
 router.get("/me", auth, getCurrentUser);
 router.put("/update-profile", auth, updateProfile);
 

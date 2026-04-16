@@ -94,7 +94,7 @@ export default function Footer() {
             <h3 className="font-bold text-white border-b border-primary pb-2">Contact Us</h3>
             <div className="space-y-3">
               <a
-                href="tel:+919999999999"
+                href="tel:+917230001405"
                 className="flex items-start gap-3 text-white/70 hover:text-primary text-sm transition-colors duration-200"
               >
                 <Phone className="h-4 w-4 mt-0.5 shrink-0 text-primary" />

@@ -727,12 +727,425 @@
 
 
 
+
+
+
+
+
+
+// import User from "../models/User.js";
+// import bcrypt from "bcryptjs";
+// import generateToken from "../utils/generateToken.js";
+// import crypto from "crypto";
+// import { sendOtpEmail } from "../utils/sendEmail.js";
+
+// export const register = async (req, res) => {
+//   const { name, email, phone, password, role = "user" } = req.body;
+
+//   try {
+//     if (!name || !email || !password) {
+//       return res.status(400).json({ message: "Name, email, and password are required" });
+//     }
+
+//     // Phone validation for users only
+//     if (role === "user" && (!phone || phone.trim() === '')) {
+//       return res.status(400).json({ message: "Phone number is required for user registration" });
+//     }
+
+//     const emailExists = await User.findOne({ email });
+//     if (emailExists) {
+//       return res.status(400).json({ message: "Email already exists" });
+//     }
+
+//     const hashedPassword = await bcrypt.hash(password, 10);
+
+//     const userData = {
+//       name,
+//       email: email.toLowerCase(),
+//       password: hashedPassword,
+//       role: role === "admin" ? "admin" : "user"
+//     };
+
+//     // Only add phone if provided
+//     if (phone && phone.trim()) {
+//       const phoneExists = await User.findOne({ phone });
+//       if (phoneExists) {
+//         return res.status(400).json({ message: "Phone already exists" });
+//       }
+//       userData.phone = phone;
+//     }
+
+//     const user = await User.create(userData);
+
+//     res.status(201).json({
+//       success: true,
+//       token: generateToken(user._id),
+//       user: {
+//         _id: user._id,
+//         name: user.name,
+//         email: user.email,
+//         phone: user.phone || '',
+//         role: user.role
+//       }
+//     });
+//   } catch (error) {
+//     console.error("Register error:", error);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
+
+// export const login = async (req, res) => {
+//   const { emailOrPhone, password } = req.body;
+
+//   try {
+//     console.log("Login attempt for:", emailOrPhone);
+    
+//     if (!emailOrPhone || !password) {
+//       return res.status(400).json({ message: "All fields are required" });
+//     }
+
+//     const user = await User.findOne({
+//       $or: [
+//         { email: emailOrPhone.toLowerCase() },
+//         { phone: emailOrPhone }
+//       ]
+//     }).select("+password");
+
+//     if (!user) {
+//       console.log("User not found");
+//       return res.status(401).json({ message: "Invalid credentials" });
+//     }
+
+//     const isMatch = await bcrypt.compare(password, user.password);
+//     if (!isMatch) {
+//       console.log("Password mismatch");
+//       return res.status(401).json({ message: "Invalid credentials" });
+//     }
+
+//     if (user.isActive === false) {
+//       return res.status(401).json({ message: "Account is deactivated. Please contact admin." });
+//     }
+
+//     // ONLY update lastLogin - this is the only save operation
+//     user.lastLogin = new Date();
+//     await user.save(); // This is line 828
+
+//     const token = generateToken(user._id);
+
+//     res.json({
+//       success: true,
+//       token: token,
+//       user: {
+//         _id: user._id,
+//         name: user.name,
+//         email: user.email,
+//         phone: user.phone || '',
+//         role: user.role
+//       }
+//     });
+    
+//   } catch (error) {
+//     console.error("Login error details:", error);
+//     res.status(500).json({ message: "Server error during login" });
+//   }
+// };
+
+// export const forgotPassword = async (req, res) => {
+//   const { email } = req.body;
+
+//   try {
+//     if (!email) {
+//       return res.status(400).json({ message: "Email is required" });
+//     }
+
+//     const user = await User.findOne({ email: email.toLowerCase() });
+
+//     if (!user) {
+//       return res.status(404).json({ message: "No account found with this email" });
+//     }
+
+//     // Generate 6-digit OTP
+//     const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+//     // Store OTP and expiry (5 minutes)
+//     user.resetOtp = otp;
+//     user.resetOtpExpiry = Date.now() + 5 * 60 * 1000;
+
+//     await user.save();
+
+//     // Send OTP via email
+//     await sendOtpEmail(email, otp);
+
+//     res.status(200).json({ 
+//       success: true,
+//       message: "OTP sent to your email" 
+//     });
+//   } catch (error) {
+//     console.error("Forgot password error:", error);
+//     res.status(500).json({ message: "Failed to send OTP" });
+//   }
+// };
+
+// export const resetPassword = async (req, res) => {
+//   const { email, otp, newPassword } = req.body;
+
+//   try {
+//     const user = await User.findOne({ email: email.toLowerCase() })
+//       .select("+resetOtp +resetOtpExpiry +password");
+
+//     if (!user) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
+
+//     if (!user.resetOtp || String(user.resetOtp).trim() !== String(otp).trim()) {
+//       return res.status(400).json({ message: "Invalid OTP" });
+//     }
+
+//     if (!user.resetOtpExpiry || user.resetOtpExpiry < Date.now()) {
+//       return res.status(400).json({ message: "OTP has expired" });
+//     }
+
+//     if (newPassword.length < 6) {
+//       return res.status(400).json({ message: "Password must be at least 6 characters" });
+//     }
+
+//     const salt = await bcrypt.genSalt(10);
+//     user.password = await bcrypt.hash(newPassword, salt);
+//     user.resetOtp = undefined;
+//     user.resetOtpExpiry = undefined;
+
+//     await user.save();
+
+//     res.status(200).json({ 
+//       success: true,
+//       message: "Password reset successful" 
+//     });
+//   } catch (error) {
+//     console.error("Reset password error:", error);
+//     res.status(500).json({ message: "Server error" });
+//   }
+// };
+
+// // Get current user profile
+// export const getCurrentUser = async (req, res) => {
+//   try {
+//     if (!req.user) {
+//       return res.status(401).json({ 
+//         success: false,
+//         message: "User not authenticated" 
+//       });
+//     }
+
+//     const user = await User.findById(req.user._id).select("-password -resetOtp -resetOtpExpiry");
+    
+//     if (!user) {
+//       return res.status(404).json({ 
+//         success: false,
+//         message: "User not found" 
+//       });
+//     }
+
+//     res.json({
+//       success: true,
+//       data: {
+//         _id: user._id,
+//         name: user.name,
+//         email: user.email,
+//         phone: user.phone || '',
+//         role: user.role,
+//         isActive: user.isActive !== undefined ? user.isActive : true,
+//         isVerified: user.isVerified !== undefined ? user.isVerified : false,
+//         createdAt: user.createdAt,
+//         lastLogin: user.lastLogin
+//       }
+//     });
+//   } catch (error) {
+//     console.error("Get current user error:", error);
+//     res.status(500).json({ 
+//       success: false,
+//       message: "Failed to fetch user profile"
+//     });
+//   }
+// };
+
+// // Update user profile
+// export const updateProfile = async (req, res) => {
+//   try {
+//     const { name, email, currentPassword, newPassword } = req.body;
+    
+//     const user = await User.findById(req.user._id).select("+password");
+    
+//     if (!user) {
+//       return res.status(404).json({ 
+//         success: false,
+//         message: "User not found" 
+//       });
+//     }
+
+//     // Update name if provided
+//     if (name && name.trim()) {
+//       user.name = name.trim();
+//     }
+
+//     // Update email if provided and changed
+//     if (email && email.trim() && email.toLowerCase() !== user.email) {
+//       const existingUser = await User.findOne({ email: email.toLowerCase() });
+//       if (existingUser && existingUser._id.toString() !== user._id.toString()) {
+//         return res.status(400).json({
+//           success: false,
+//           message: "Email already in use by another account",
+//         });
+//       }
+//       user.email = email.toLowerCase();
+//     }
+
+//     // Update password if provided
+//     if (currentPassword && newPassword) {
+//       const isMatch = await bcrypt.compare(currentPassword, user.password);
+//       if (!isMatch) {
+//         return res.status(400).json({
+//           success: false,
+//           message: "Current password is incorrect",
+//         });
+//       }
+
+//       if (newPassword.length < 6) {
+//         return res.status(400).json({
+//           success: false,
+//           message: "New password must be at least 6 characters",
+//         });
+//       }
+
+//       const salt = await bcrypt.genSalt(10);
+//       user.password = await bcrypt.hash(newPassword, salt);
+//     }
+
+//     await user.save();
+
+//     res.json({
+//       success: true,
+//       message: "Profile updated successfully",
+//       data: {
+//         _id: user._id,
+//         name: user.name,
+//         email: user.email,
+//         phone: user.phone || '',
+//         role: user.role,
+//         isActive: user.isActive,
+//         isVerified: user.isVerified,
+//         createdAt: user.createdAt,
+//         lastLogin: user.lastLogin
+//       }
+//     });
+//   } catch (error) {
+//     console.error("Update profile error:", error);
+//     res.status(500).json({ 
+//       success: false,
+//       message: "Failed to update profile"
+//     });
+//   }
+// };
+
+
+
 import User from "../models/User.js";
 import bcrypt from "bcryptjs";
+import RegistrationOtp from "../models/RegistrationOtp.js";
 import generateToken from "../utils/generateToken.js";
-import crypto from "crypto";
 import { sendOtpEmail } from "../utils/sendEmail.js";
 
+// ─────────────────────────────────────────────────────────────────
+// REGISTRATION OTP - SEND
+// ─────────────────────────────────────────────────────────────────
+export const sendRegistrationOtp = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    if (!email || !email.includes("@")) {
+      return res.status(400).json({ success: false, message: "Valid email is required" });
+    }
+
+    const normalizedEmail = email.toLowerCase();
+
+    // Check existing user
+    const existingUser = await User.findOne({ email: normalizedEmail });
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: "Email already registered" });
+    }
+
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Delete old OTPs
+    await RegistrationOtp.deleteMany({ email: normalizedEmail });
+
+    // Save new OTP
+    await RegistrationOtp.create({
+      email: normalizedEmail,
+      otp,
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+    });
+
+    // Send email
+   await sendOtpEmail(normalizedEmail, otp, "register");
+
+    res.status(200).json({
+      success: true,
+      message: "OTP sent to your email",
+    });
+
+  } catch (error) {
+    console.error("Send registration OTP error:", error);
+    res.status(500).json({ success: false, message: "Failed to send OTP" });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────
+// REGISTRATION OTP - VERIFY
+// ─────────────────────────────────────────────────────────────────
+export const verifyRegistrationOtp = async (req, res) => {
+  const { email, otp } = req.body;
+
+  try {
+    if (!email || !otp) {
+      return res.status(400).json({ success: false, message: "Email and OTP are required" });
+    }
+
+    const normalizedEmail = email.toLowerCase();
+
+    const record = await RegistrationOtp.findOne({ email: normalizedEmail });
+
+    if (!record) {
+      return res.status(400).json({ success: false, message: "No OTP request found" });
+    }
+
+    if (record.expiresAt < new Date()) {
+      await RegistrationOtp.deleteOne({ _id: record._id });
+      return res.status(400).json({ success: false, message: "OTP expired" });
+    }
+
+    if (record.otp !== otp) {
+      return res.status(400).json({ success: false, message: "Invalid OTP" });
+    }
+
+    // Mark verified
+    record.verified = true;
+    await record.save();
+
+    res.status(200).json({
+      success: true,
+      message: "OTP verified",
+    });
+
+  } catch (error) {
+    console.error("Verify OTP error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────
+// REGISTER (WITH OTP CHECK)
+// ─────────────────────────────────────────────────────────────────
 export const register = async (req, res) => {
   const { name, email, phone, password, role = "user" } = req.body;
 
@@ -741,12 +1154,30 @@ export const register = async (req, res) => {
       return res.status(400).json({ message: "Name, email, and password are required" });
     }
 
-    // Phone validation for users only
-    if (role === "user" && (!phone || phone.trim() === '')) {
-      return res.status(400).json({ message: "Phone number is required for user registration" });
+    const normalizedEmail = email.toLowerCase();
+
+    // ✅ Check OTP verified
+    const verificationRecord = await RegistrationOtp.findOne({
+      email: normalizedEmail,
+      verified: true,
+    });
+
+    if (!verificationRecord) {
+      return res.status(400).json({
+        message: "Email not verified. Please verify OTP first.",
+      });
     }
 
-    const emailExists = await User.findOne({ email });
+    // Delete OTP after use
+    await RegistrationOtp.deleteOne({ _id: verificationRecord._id });
+
+    // Phone validation
+    if (role === "user" && (!phone || phone.trim() === "")) {
+      return res.status(400).json({ message: "Phone number is required" });
+    }
+
+    // Check existing email
+    const emailExists = await User.findOne({ email: normalizedEmail });
     if (emailExists) {
       return res.status(400).json({ message: "Email already exists" });
     }
@@ -755,12 +1186,11 @@ export const register = async (req, res) => {
 
     const userData = {
       name,
-      email: email.toLowerCase(),
+      email: normalizedEmail,
       password: hashedPassword,
-      role: role === "admin" ? "admin" : "user"
+      role: role === "admin" ? "admin" : "user",
     };
 
-    // Only add phone if provided
     if (phone && phone.trim()) {
       const phoneExists = await User.findOne({ phone });
       if (phoneExists) {
@@ -778,22 +1208,24 @@ export const register = async (req, res) => {
         _id: user._id,
         name: user.name,
         email: user.email,
-        phone: user.phone || '',
-        role: user.role
-      }
+        phone: user.phone || "",
+        role: user.role,
+      },
     });
+
   } catch (error) {
     console.error("Register error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
+// ─────────────────────────────────────────────────────────────────
+// LOGIN
+// ─────────────────────────────────────────────────────────────────
 export const login = async (req, res) => {
   const { emailOrPhone, password } = req.body;
 
   try {
-    console.log("Login attempt for:", emailOrPhone);
-    
     if (!emailOrPhone || !password) {
       return res.status(400).json({ message: "All fields are required" });
     }
@@ -801,241 +1233,200 @@ export const login = async (req, res) => {
     const user = await User.findOne({
       $or: [
         { email: emailOrPhone.toLowerCase() },
-        { phone: emailOrPhone }
-      ]
+        { phone: emailOrPhone },
+      ],
     }).select("+password");
 
     if (!user) {
-      console.log("User not found");
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      console.log("Password mismatch");
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
     if (user.isActive === false) {
-      return res.status(401).json({ message: "Account is deactivated. Please contact admin." });
+      return res.status(401).json({ message: "Account deactivated" });
     }
 
-    // ONLY update lastLogin - this is the only save operation
     user.lastLogin = new Date();
-    await user.save(); // This is line 828
-
-    const token = generateToken(user._id);
+    await user.save();
 
     res.json({
       success: true,
-      token: token,
+      token: generateToken(user._id),
       user: {
         _id: user._id,
         name: user.name,
         email: user.email,
-        phone: user.phone || '',
-        role: user.role
-      }
+        phone: user.phone || "",
+        role: user.role,
+      },
     });
-    
+
   } catch (error) {
-    console.error("Login error details:", error);
+    console.error("Login error:", error);
     res.status(500).json({ message: "Server error during login" });
   }
 };
 
+// ─────────────────────────────────────────────────────────────────
+// FORGOT PASSWORD
+// ─────────────────────────────────────────────────────────────────
 export const forgotPassword = async (req, res) => {
   const { email } = req.body;
 
   try {
     if (!email) {
-      return res.status(400).json({ message: "Email is required" });
+      return res.status(400).json({ message: "Email required" });
     }
 
     const user = await User.findOne({ email: email.toLowerCase() });
 
     if (!user) {
-      return res.status(404).json({ message: "No account found with this email" });
+      return res.status(404).json({ message: "No account found" });
     }
 
-    // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // Store OTP and expiry (5 minutes)
     user.resetOtp = otp;
     user.resetOtpExpiry = Date.now() + 5 * 60 * 1000;
 
     await user.save();
+   
+    const normalizedEmail = email.toLowerCase();
+await sendOtpEmail(normalizedEmail, otp, "forgot");
 
-    // Send OTP via email
-    await sendOtpEmail(email, otp);
+    res.json({ success: true, message: "OTP sent" });
 
-    res.status(200).json({ 
-      success: true,
-      message: "OTP sent to your email" 
-    });
   } catch (error) {
-    console.error("Forgot password error:", error);
     res.status(500).json({ message: "Failed to send OTP" });
   }
 };
 
+// ─────────────────────────────────────────────────────────────────
+// RESET PASSWORD
+// ─────────────────────────────────────────────────────────────────
 export const resetPassword = async (req, res) => {
   const { email, otp, newPassword } = req.body;
 
   try {
-    const user = await User.findOne({ email: email.toLowerCase() })
-      .select("+resetOtp +resetOtpExpiry +password");
+    const user = await User.findOne({ email: email.toLowerCase() }).select("+password +resetOtp +resetOtpExpiry");
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    if (!user) return res.status(404).json({ message: "User not found" });
 
-    if (!user.resetOtp || String(user.resetOtp).trim() !== String(otp).trim()) {
+    if (String(user.resetOtp) !== String(otp)) {
       return res.status(400).json({ message: "Invalid OTP" });
     }
 
-    if (!user.resetOtpExpiry || user.resetOtpExpiry < Date.now()) {
-      return res.status(400).json({ message: "OTP has expired" });
+    if (user.resetOtpExpiry < Date.now()) {
+      return res.status(400).json({ message: "OTP expired" });
     }
 
-    if (newPassword.length < 6) {
-      return res.status(400).json({ message: "Password must be at least 6 characters" });
-    }
-
-    const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(newPassword, salt);
+    user.password = await bcrypt.hash(newPassword, 10);
     user.resetOtp = undefined;
     user.resetOtpExpiry = undefined;
 
     await user.save();
 
-    res.status(200).json({ 
-      success: true,
-      message: "Password reset successful" 
-    });
+    res.json({ success: true, message: "Password reset successful" });
+
   } catch (error) {
-    console.error("Reset password error:", error);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-// Get current user profile
+
+
+// ─────────────────────────────────────────────────────────────────
+// GET CURRENT USER
+// ─────────────────────────────────────────────────────────────────
 export const getCurrentUser = async (req, res) => {
   try {
     if (!req.user) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         success: false,
-        message: "User not authenticated" 
+        message: "User not authenticated",
       });
     }
 
-    const user = await User.findById(req.user._id).select("-password -resetOtp -resetOtpExpiry");
-    
+    const user = await User.findById(req.user._id).select(
+      "-password -resetOtp -resetOtpExpiry"
+    );
+
     if (!user) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: "User not found" 
+        message: "User not found",
       });
     }
 
     res.json({
       success: true,
-      data: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone || '',
-        role: user.role,
-        isActive: user.isActive !== undefined ? user.isActive : true,
-        isVerified: user.isVerified !== undefined ? user.isVerified : false,
-        createdAt: user.createdAt,
-        lastLogin: user.lastLogin
-      }
+      data: user,
     });
   } catch (error) {
     console.error("Get current user error:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Failed to fetch user profile"
+      message: "Failed to fetch user",
     });
   }
 };
 
-// Update user profile
+// ─────────────────────────────────────────────────────────────────
+// UPDATE PROFILE
+// ─────────────────────────────────────────────────────────────────
 export const updateProfile = async (req, res) => {
   try {
     const { name, email, currentPassword, newPassword } = req.body;
-    
+
     const user = await User.findById(req.user._id).select("+password");
-    
+
     if (!user) {
-      return res.status(404).json({ 
+      return res.status(404).json({
         success: false,
-        message: "User not found" 
+        message: "User not found",
       });
     }
 
-    // Update name if provided
-    if (name && name.trim()) {
-      user.name = name.trim();
-    }
+    if (name) user.name = name;
 
-    // Update email if provided and changed
-    if (email && email.trim() && email.toLowerCase() !== user.email) {
-      const existingUser = await User.findOne({ email: email.toLowerCase() });
-      if (existingUser && existingUser._id.toString() !== user._id.toString()) {
+    if (email && email !== user.email) {
+      const existing = await User.findOne({ email: email.toLowerCase() });
+      if (existing) {
         return res.status(400).json({
           success: false,
-          message: "Email already in use by another account",
+          message: "Email already in use",
         });
       }
       user.email = email.toLowerCase();
     }
 
-    // Update password if provided
     if (currentPassword && newPassword) {
       const isMatch = await bcrypt.compare(currentPassword, user.password);
       if (!isMatch) {
         return res.status(400).json({
-          success: false,
-          message: "Current password is incorrect",
+          message: "Current password incorrect",
         });
       }
 
-      if (newPassword.length < 6) {
-        return res.status(400).json({
-          success: false,
-          message: "New password must be at least 6 characters",
-        });
-      }
-
-      const salt = await bcrypt.genSalt(10);
-      user.password = await bcrypt.hash(newPassword, salt);
+      user.password = await bcrypt.hash(newPassword, 10);
     }
 
     await user.save();
 
     res.json({
       success: true,
-      message: "Profile updated successfully",
-      data: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone || '',
-        role: user.role,
-        isActive: user.isActive,
-        isVerified: user.isVerified,
-        createdAt: user.createdAt,
-        lastLogin: user.lastLogin
-      }
+      message: "Profile updated",
+      data: user,
     });
   } catch (error) {
     console.error("Update profile error:", error);
-    res.status(500).json({ 
+    res.status(500).json({
       success: false,
-      message: "Failed to update profile"
+      message: "Update failed",
     });
   }
 };

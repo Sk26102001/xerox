@@ -4055,18 +4055,901 @@
 
 
 
+// import Order from '../models/Order.js';
+// import Cart from '../models/Cart.js';
+// import Payment from '../models/Payment.js';
+// import axios from 'axios';
+// import { generateOrderNumber } from "../utils/generateOrderNumber.js";
+// import {
+//   createShipment,
+//   generateShippingLabel,
+//   registerPickup, 
+//   getShipmentStatus,
+//   getTrackingHistory
+// } from '../services/fshipService.js';
+// import path from 'path';
+// import fs from 'fs';
+// import multer from 'multer';
+
+// // Ensure uploads directory exists
+// const uploadDir = 'uploads';
+// if (!fs.existsSync(uploadDir)) {
+//   fs.mkdirSync(uploadDir);
+// }
+
+// // Configure multer storage
+// const storage = multer.diskStorage({
+//   destination: function (req, file, cb) {
+//     cb(null, uploadDir);
+//   },
+//   filename: function (req, file, cb) {
+//     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+//     const ext = path.extname(file.originalname);
+//     cb(null, uniqueSuffix + ext);
+//   }
+// });
+
+// // File filter to accept only specific file types
+// const fileFilter = (req, file, cb) => {
+//   const allowedTypes = ['application/pdf', 'image/jpeg', 'image/jpg', 'image/png'];
+//   if (allowedTypes.includes(file.mimetype)) {
+//     cb(null, true);
+//   } else {
+//     cb(new Error('Invalid file type. Only PDF and images are allowed.'), false);
+//   }
+// };
+
+// // Configure multer
+// const upload = multer({
+//   storage: storage,
+//   limits: { fileSize: 50 * 1024 * 1024 },
+//   fileFilter: fileFilter
+// });
+
+// // Helper function to calculate order weight based on items - MATCH FRONTEND CALCULATION
+// const calculateOrderWeight = (items) => {
+//   if (!items || items.length === 0) return 0.5;
+  
+//   let totalWeightKg = 0;
+
+//   items.forEach(item => {
+//     const totalPages = (item.pages || 0) * (item.copies || 1);
+    
+//     let paperWeightPerPage = 0.002;
+//     if (item.paperType === 'premium') paperWeightPerPage = 0.005;
+//     else if (item.paperType === 'glossy') paperWeightPerPage = 0.004;
+//     else if (item.paperType === 'recycled') paperWeightPerPage = 0.0025;
+    
+//     let itemWeight = totalPages * paperWeightPerPage;
+    
+//     if (item.bindingType === 'spiral') itemWeight += 0.050;
+//     else if (item.bindingType === 'perfect') itemWeight += 0.080;
+//     else if (item.bindingType === 'hardcover') itemWeight += 0.200;
+//     else if (item.bindingType === 'saddle') itemWeight += 0.030;
+    
+//     if (item.lamination === 'matte' || item.lamination === 'glossy') {
+//       itemWeight += totalPages * 0.001;
+//     }
+    
+//     totalWeightKg += itemWeight;
+//   });
+
+//   if (totalWeightKg > 2) totalWeightKg += 0.3;
+//   else if (totalWeightKg > 1) totalWeightKg += 0.2;
+//   else totalWeightKg += 0.1;
+  
+//   const finalWeight = Math.max(0.2, Math.round(totalWeightKg * 100) / 100);
+  
+//   console.log(`📦 Calculated order weight: ${finalWeight} kg`);
+//   return finalWeight;
+// };
+
+// // Upload file endpoint
+// export const uploadFile = async (req, res) => {
+//   try {
+//     if (!req.file) {
+//       return res.status(400).json({ success: false, message: "No file uploaded" });
+//     }
+    
+//     const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    
+//     res.json({
+//       success: true,
+//       url: fileUrl,
+//       file: {
+//         name: req.file.originalname,
+//         size: req.file.size,
+//         type: req.file.mimetype,
+//         filename: req.file.filename,
+//         url: fileUrl
+//       }
+//     });
+//   } catch (error) {
+//     console.error('Upload error:', error);
+//     res.status(500).json({ success: false, message: "Upload failed" });
+//   }
+// };
+
+// export const downloadFile = async (req, res) => {
+//   try {
+//     const { filename } = req.params;
+//     const filePath = path.join(uploadDir, filename);
+    
+//     if (!fs.existsSync(filePath)) {
+//       return res.status(404).json({ success: false, message: "File not found" });
+//     }
+    
+//     res.download(filePath);
+//   } catch (error) {
+//     console.error('Download error:', error);
+//     res.status(500).json({ success: false, message: "Failed to download file" });
+//   }
+// };
+
+// export const uploadSingleFile = upload.single('file');
+
+// // ------------------- CREATE ORDER FROM CART -------------------
+// export const createOrderFromCart = async (req, res) => {
+//   try {
+//     const userId = req.user.id;
+//     const { 
+//       items, 
+//       customer, 
+//       orderMode, 
+//       deliveryType, 
+//       totalAmount, 
+//       finalAmount,
+//       discountAmount,
+//       discountsApplied,
+//       cartId, 
+//       paymentMode,
+//       deliveryPartner,
+//       deliveryCharge,
+//       orderWeight  // ✅ ADDED - CRITICAL FIX
+//     } = req.body;
+
+//     console.log("\n=== CREATE ORDER FROM CART ===");
+//     console.log("📦 orderWeight received from frontend:", orderWeight, "kg");
+//     console.log("📦 deliveryCharge received:", deliveryCharge);
+//     console.log("📦 deliveryPartner received:", deliveryPartner);
+
+//     if (!items || !items.length) {
+//       return res.status(400).json({ success: false, message: "No items in order" });
+//     }
+//     if (!customer || !customer.name || !customer.phone) {
+//       return res.status(400).json({ success: false, message: "Customer name and phone are required" });
+//     }
+
+//     const orderNumber = await generateOrderNumber();
+
+//     // Use weight from frontend, fallback to calculation
+//     const finalOrderWeight = orderWeight || calculateOrderWeight(items);
+//     console.log(`📦 FINAL WEIGHT TO USE: ${finalOrderWeight} kg`);
+
+//     const mappedItems = items.map(item => {
+//       let itemAmount = item.amount || 0;
+      
+//       if (itemAmount === 0 && item.pages && item.copies) {
+//         const totalPages = item.pages * item.copies;
+        
+//         if (item.printColor === 'color') {
+//           itemAmount = totalPages * 3;
+//         } else {
+//           itemAmount = totalPages * 1;
+//         }
+        
+//         if (item.bindingType === 'perfect_glue') itemAmount += 50 * item.copies;
+//         if (item.bindingType === 'spiral') itemAmount += 30 * item.copies;
+//         if (item.bindingType === 'hardcover') itemAmount += 150 * item.copies;
+        
+//         console.log(`📦 Calculated amount for item: ₹${itemAmount.toFixed(2)}`);
+//       }
+      
+//       return {
+//         pages: item.pages || 0,
+//         copies: item.copies || 1,
+//         paperSize: item.paperSize || "A4",
+//         paperType: item.paperType || "70gsm_normal",
+//         printColor: item.printColor || "bw",
+//         printSide: item.printSide || "double",
+//         bindingType: item.bindingType || "none",
+//         lamination: item.lamination || "none",
+//         instructions: item.instructions || "",
+//         files: item.files || [],
+//         amount: parseFloat(itemAmount.toFixed(2)),
+//         unitPrice: item.unitPrice || 0
+//       };
+//     });
+
+//     const calculatedTotalAmount = totalAmount || mappedItems.reduce((sum, item) => sum + item.amount, 0);
+//     const calculatedFinalAmount = finalAmount !== undefined ? finalAmount : calculatedTotalAmount;
+//     const calculatedDiscountAmount = discountAmount !== undefined ? discountAmount : (calculatedTotalAmount - calculatedFinalAmount);
+
+//     const order = new Order({
+//       userId,
+//       items: mappedItems,
+//       customer,
+//       orderMode: orderMode || "single",
+//       deliveryType: deliveryType || "pickup",
+//       totalAmount: calculatedTotalAmount,
+//       finalAmount: calculatedFinalAmount,
+//       discountAmount: calculatedDiscountAmount,
+//       discountsApplied: {
+//         promo: discountsApplied?.promo || null,
+//         offer: discountsApplied?.offer || null,
+//         totalDiscount: calculatedDiscountAmount
+//       },
+//       orderNumber,
+//       orderWeight: finalOrderWeight,
+//       paymentStatus: 'pending',
+//       paymentMode: paymentMode || 'upi',
+//       status: 'pending',
+//       cartId: cartId || null,
+//       deliveryPartner: deliveryPartner || null,
+//       deliveryCharge: deliveryCharge || 0,
+//       fship: {},
+//       statusHistory: [{
+//         status: 'pending',
+//         changedBy: userId,
+//         changedAt: new Date(),
+//         note: `Order created. Weight: ${finalOrderWeight}kg, Delivery: ₹${deliveryCharge || 0}`
+//       }]
+//     });
+
+//     const savedOrder = await order.save();
+
+//     console.log(`✅ Order saved: ${savedOrder.orderNumber}, Weight: ${savedOrder.orderWeight}kg`);
+
+//     if (cartId) await Cart.findByIdAndDelete(cartId);
+
+//     // Create shipment for courier delivery
+//     if (deliveryType === 'courier') {
+//       try {
+//         console.log("📦 Creating Fship shipment with weight:", finalOrderWeight, "kg");
+        
+//         const fshipOrderData = {
+//           orderNumber: savedOrder.orderNumber,
+//           invoiceNumber: `INV${Date.now()}`,
+//           paymentMode: paymentMode === 'cod' ? 1 : 2,
+//           expressType: "surface",
+//           orderWeight: finalOrderWeight,
+//           weight: finalOrderWeight,
+//           // subtotal: subtotal,
+//           totalAmount: calculatedFinalAmount,
+//           deliveryCharge: deliveryCharge,
+//           warehousePincode: process.env.FSHIP_WAREHOUSE_PINCODE || "305001",
+//           customer: {
+//             name: customer.name,
+//             phone: customer.phone,
+//             email: customer.email || `${customer.phone}@temp.com`,
+//             address: customer.address,
+//             landmark: customer.landmark || "",
+//             addressType: customer.addressType || "Home",
+//             pincode: customer.pincode,
+//             city: customer.city,
+//             state: customer.state,
+//             country: "India"
+//           },
+//           items: mappedItems,
+//           courierId: deliveryPartner || 0
+//         };
+        
+//         console.log("📦 FShip Request:", {
+//           weight: fshipOrderData.orderWeight,
+//           deliveryCharge: fshipOrderData.deliveryCharge,
+//           courierId: fshipOrderData.courierId
+//         });
+        
+//         const shippingResponse = await axios.post(
+//           `${process.env.BACKEND_URL || 'https://xerox-2.onrender.com'}/api/shipping/create-shipment`,
+//           {
+//             order: fshipOrderData,
+//             warehouseId: parseInt(process.env.FSHIP_WAREHOUSE_ID || "38020")
+//           },
+//           {
+//             headers: { 'Content-Type': 'application/json' }
+//           }
+//         );
+        
+//         if (shippingResponse.data.success) {
+//           const shipmentData = shippingResponse.data.data;
+          
+//           savedOrder.shipment = {
+//             waybill: shipmentData.shipment.waybill,
+//             courier: shipmentData.courier.used.name,
+//             status: 'Booked',
+//             labelUrl: shipmentData.shipment.labelurl || '',
+//             lastUpdated: new Date()
+//           };
+//           savedOrder.shipmentCreated = true;
+//           savedOrder.deliveryCharge = shipmentData.courier.used.charge;
+//           savedOrder.deliveryPartner = shipmentData.courier.used.id;
+          
+//           await savedOrder.save();
+          
+//           console.log(`✅ Shipment created: ${shipmentData.shipment.waybill} with ${shipmentData.courier.used.name} - ₹${shipmentData.courier.used.charge}`);
+//         }
+        
+//       } catch (fshipError) {
+//         console.error("❌ Fship error:", fshipError.response?.data || fshipError.message);
+//       }
+//     } else {
+//       console.log("📍 Store pickup order - No shipment created");
+//       savedOrder.fship = { status: 'store_pickup', lastUpdated: new Date() };
+//       await savedOrder.save();
+//     }
+
+//     res.status(201).json({
+//       success: true,
+//       message: "Order created successfully",
+//       order: {
+//         _id: savedOrder._id,
+//         orderNumber: savedOrder.orderNumber,
+//         totalAmount: savedOrder.totalAmount,
+//         finalAmount: savedOrder.finalAmount,
+//         discountAmount: savedOrder.discountAmount,
+//         discountsApplied: savedOrder.discountsApplied,
+//         orderWeight: savedOrder.orderWeight,
+//         deliveryCharge: savedOrder.deliveryCharge
+//       }
+//     });
+
+//   } catch (error) {
+//     console.error("Error creating order:", error);
+//     res.status(500).json({ success: false, message: "Failed to create order", error: error.message });
+//   }
+// };
+
+// // ------------------- UPDATE ORDER AMOUNT -------------------
+// export const updateOrderAmount = async (req, res) => {
+//   try {
+//     const { orderId } = req.params;
+//     const { finalAmount, discountAmount, discountsApplied } = req.body;
+//     const userId = req.user.id;
+//     const userRole = req.user.role;
+
+//     let order;
+//     if (userRole === 'admin') {
+//       order = await Order.findById(orderId);
+//     } else {
+//       order = await Order.findOne({ _id: orderId, userId });
+//     }
+
+//     if (!order) {
+//       return res.status(404).json({ success: false, message: "Order not found" });
+//     }
+
+//     if (finalAmount !== undefined) order.finalAmount = finalAmount;
+//     if (discountAmount !== undefined) order.discountAmount = discountAmount;
+//     if (discountsApplied) {
+//       order.discountsApplied = {
+//         promo: discountsApplied.promo || null,
+//         offer: discountsApplied.offer || null,
+//         totalDiscount: discountAmount || 0
+//       };
+//     }
+
+//     order.statusHistory.push({
+//       status: order.status,
+//       changedBy: userId,
+//       changedAt: new Date(),
+//       note: `Order amount updated: Final ₹${order.finalAmount}, Discount ₹${order.discountAmount}`
+//     });
+
+//     await order.save();
+
+//     res.status(200).json({
+//       success: true,
+//       message: "Order amount updated successfully",
+//       order: {
+//         _id: order._id,
+//         orderNumber: order.orderNumber,
+//         totalAmount: order.totalAmount,
+//         finalAmount: order.finalAmount,
+//         discountAmount: order.discountAmount,
+//         discountsApplied: order.discountsApplied
+//       }
+//     });
+
+//   } catch (error) {
+//     console.error("Error updating order amount:", error);
+//     res.status(500).json({ success: false, message: "Failed to update order amount", error: error.message });
+//   }
+// };
+
+// // ------------------- GET ALL ORDERS -------------------
+// export const getOrders = async (req, res) => {
+//   try {
+//     const userId = req.user.id;
+
+//     const orders = await Order.find({ userId })
+//       .populate('payment')
+//       .sort({ createdAt: -1 });
+
+//     const transformedOrders = orders.map(order => ({
+//       ...order.toObject(),
+//       paymentMethod: order.payment?.paymentMethod,
+//       razorpayPaymentId: order.payment?.razorpayPaymentId || order.razorpayPaymentId,
+//       paymentStatus: order.payment?.status || order.paymentStatus,
+//       paymentMode: order.paymentMode || order.payment?.paymentMethod || 'upi',
+//       displayAmount: order.finalAmount || order.totalAmount
+//     }));
+
+//     res.status(200).json({ success: true, orders: transformedOrders });
+//   } catch (error) {
+//     console.error("Error fetching orders:", error);
+//     res.status(500).json({ success: false, message: "Failed to fetch orders" });
+//   }
+// };
+
+// // ------------------- GET ORDER BY ID -------------------
+// export const getOrderById = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const userId = req.user.id;
+//     const userRole = req.user.role;
+
+//     let order;
+
+//     if (userRole === "admin") {
+//       order = await Order.findById(id).populate('payment');
+//     } else {
+//       order = await Order.findOne({ _id: id, userId }).populate('payment');
+//     }
+
+//     if (!order) {
+//       return res.status(404).json({
+//         success: false,
+//         message: "Order not found"
+//       });
+//     }
+
+//     const transformedOrder = {
+//       ...order.toObject(),
+//       paymentMethod: order.payment?.paymentMethod,
+//       razorpayPaymentId: order.payment?.razorpayPaymentId || order.razorpayPaymentId,
+//       paymentDetails: order.payment,
+//       paymentMode: order.paymentMode || order.payment?.paymentMethod || 'cod',
+//       originalAmount: order.totalAmount,
+//       paidAmount: order.finalAmount,
+//       discountAmount: order.discountAmount,
+//       discountsApplied: order.discountsApplied
+//     };
+
+//     res.status(200).json({
+//       success: true,
+//       order: transformedOrder
+//     });
+
+//   } catch (error) {
+//     console.error("Error fetching order:", error);
+//     if (error.name === "CastError") {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Invalid order ID"
+//       });
+//     }
+//     res.status(500).json({
+//       success: false,
+//       message: "Failed to fetch order"
+//     });
+//   }
+// };
+
+// // ------------------- UPDATE ORDER STATUS -------------------
+// export const updateOrderStatus = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const { status } = req.body;
+//     const userId = req.user.id;
+//     const userRole = req.user.role;
+
+//     const validStatuses = ['pending', 'processing', 'printing', 'ready', 'dispatched', 'completed', 'cancelled'];
+//     if (!validStatuses.includes(status)) {
+//       return res.status(400).json({
+//         success: false,
+//         message: `Invalid status. Must be one of: ${validStatuses.join(', ')}`
+//       });
+//     }
+
+//     let order;
+//     if (userRole === 'admin') {
+//       order = await Order.findById(id);
+//     } else {
+//       order = await Order.findOne({ _id: id, userId });
+//     }
+
+//     if (!order) {
+//       return res.status(404).json({ success: false, message: "Order not found" });
+//     }
+
+//     if (order.status === 'cancelled') {
+//       return res.status(400).json({
+//         success: false,
+//         message: "Cannot update status of cancelled order"
+//       });
+//     }
+
+//     const oldStatus = order.status;
+//     order.status = status;
+    
+//     if (!order.statusHistory) {
+//       order.statusHistory = [];
+//     }
+//     order.statusHistory.push({
+//       status: status,
+//       changedBy: userId,
+//       changedAt: new Date(),
+//       note: `Status changed from ${oldStatus} to ${status}`
+//     });
+    
+//     await order.save();
+
+//     try {
+//       const broadcastOrderUpdate = req.app.get('broadcastOrderUpdate');
+//       if (broadcastOrderUpdate) {
+//         broadcastOrderUpdate(order.orderNumber, status);
+//       }
+//     } catch (broadcastError) {
+//       console.error('Error broadcasting WebSocket update:', broadcastError);
+//     }
+
+//     res.status(200).json({ 
+//       success: true, 
+//       message: `Order status updated from ${oldStatus} to ${status}`, 
+//       order 
+//     });
+//   } catch (error) {
+//     console.error("Error updating order status:", error);
+//     res.status(500).json({ success: false, message: "Failed to update order status", error: error.message });
+//   }
+// };
+
+// // ------------------- CANCEL ORDER -------------------
+// export const cancelOrder = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const userId = req.user.id;
+//     const userRole = req.user.role;
+
+//     let order;
+//     if (userRole === 'admin') {
+//       order = await Order.findById(id);
+//     } else {
+//       order = await Order.findOne({ _id: id, userId });
+//     }
+
+//     if (!order) {
+//       return res.status(404).json({ success: false, message: "Order not found" });
+//     }
+
+//     if (order.status === 'completed') {
+//       return res.status(400).json({ success: false, message: "Cannot cancel completed order" });
+//     }
+
+//     if (order.status === 'cancelled') {
+//       return res.status(400).json({ success: false, message: "Order is already cancelled" });
+//     }
+
+//     order.status = 'cancelled';
+//     await order.save();
+
+//     res.status(200).json({ success: true, message: "Order cancelled successfully", order });
+//   } catch (error) {
+//     console.error("Error cancelling order:", error);
+//     res.status(500).json({ success: false, message: "Failed to cancel order", error: error.message });
+//   }
+// };
+
+// // ------------------- UPDATE PAYMENT STATUS -------------------
+// export const updatePaymentStatus = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const { paymentStatus, paymentMode, paymentId, razorpayPaymentId } = req.body;
+//     const userRole = req.user.role;
+
+//     if (userRole !== 'admin') {
+//       return res.status(403).json({
+//         success: false,
+//         message: "Only admin can update payment status"
+//       });
+//     }
+    
+//     const order = await Order.findById(id);
+//     if (!order) {
+//       return res.status(404).json({ success: false, message: "Order not found" });
+//     }
+    
+//     const validStatuses = ['pending', 'paid', 'failed', 'refunded'];
+//     if (!validStatuses.includes(paymentStatus)) {
+//       return res.status(400).json({
+//         success: false,
+//         message: `Invalid payment status. Must be one of: ${validStatuses.join(', ')}`
+//       });
+//     }
+    
+//     order.paymentStatus = paymentStatus;
+//     if (paymentMode) order.paymentMode = paymentMode;
+//     if (paymentId) order.paymentId = paymentId;
+//     if (razorpayPaymentId) order.razorpayPaymentId = razorpayPaymentId;
+    
+//     await order.save();
+    
+//     res.status(200).json({
+//       success: true,
+//       message: "Payment status updated",
+//       order: {
+//         ...order.toObject(),
+//         paymentMode: order.paymentMode,
+//         paymentId: order.paymentId,
+//         razorpayPaymentId: order.razorpayPaymentId
+//       }
+//     });
+//   } catch (error) {
+//     console.error("Error updating payment status:", error);
+//     res.status(500).json({ success: false, message: "Failed to update payment status" });
+//   }
+// };
+
+// // ------------------- HANDLE PAYMENT SUCCESS -------------------
+// export const handlePaymentSuccess = async (req, res) => {
+//   try {
+//     const { orderId, paymentId, paymentMode, razorpayPaymentId, razorpayOrderId } = req.body;
+    
+//     if (!orderId) {
+//       return res.status(400).json({ success: false, message: "Order ID is required" });
+//     }
+    
+//     const order = await Order.findById(orderId);
+//     if (!order) {
+//       return res.status(404).json({ success: false, message: "Order not found" });
+//     }
+    
+//     order.paymentStatus = 'paid';
+//     order.paymentMode = paymentMode || 'upi';
+//     order.paymentId = paymentId;
+//     order.razorpayPaymentId = razorpayPaymentId;
+//     if (razorpayOrderId) order.razorpayOrderId = razorpayOrderId;
+    
+//     await order.save();
+    
+//     res.status(200).json({
+//       success: true,
+//       message: "Payment recorded successfully",
+//       order: {
+//         orderNumber: order.orderNumber,
+//         amount: order.finalAmount,
+//         paymentStatus: order.paymentStatus,
+//         paymentMode: order.paymentMode
+//       }
+//     });
+//   } catch (error) {
+//     console.error("Error handling payment success:", error);
+//     res.status(500).json({ success: false, message: "Failed to record payment" });
+//   }
+// };
+
+// // ------------------- TRACK ORDER BY ORDER NUMBER -------------------
+// export const trackOrder = async (req, res) => {
+//   try {
+//     const encodedOrderNumber = req.params.orderNumber;
+//     const orderNumber = decodeURIComponent(encodedOrderNumber);
+    
+//     if (!orderNumber) {
+//       return res.status(400).json({ success: false, message: "Order number is required" });
+//     }
+    
+//     const order = await Order.findOne({ orderNumber: orderNumber });
+    
+//     if (!order) {
+//       return res.status(404).json({ success: false, message: "Order not found" });
+//     }
+    
+//     const firstItem = order.items && order.items[0] || {};
+//     const waybill = order.shipment?.waybill || order.fship?.waybill;
+    
+//     res.status(200).json({
+//       success: true,
+//       data: {
+//         orderId: order.orderNumber,
+//         status: order.status,
+//         createdAt: order.createdAt.toLocaleString(),
+//         amount: order.finalAmount,
+//         originalAmount: order.totalAmount,
+//         discountAmount: order.discountAmount,
+//         deliveryType: order.deliveryType === 'courier' ? 'Courier Delivery' : 'Store Pickup',
+//         waybill: waybill,
+//         courierName: order.shipment?.courier || order.fship?.courier,
+//         items: {
+//           pages: firstItem.pages || 0,
+//           copies: firstItem.copies || 0,
+//           paperSize: firstItem.paperSize || 'A4',
+//           printColor: firstItem.printColor === 'color' ? 'Color' : 'B&W',
+//           bindingType: firstItem.bindingType || 'Perfect Glue'
+//         }
+//       },
+//       message: "Order tracked successfully"
+//     });
+    
+//   } catch (error) {
+//     console.error("Track order error:", error);
+//     res.status(500).json({ success: false, message: "Failed to track order", error: error.message });
+//   }
+// };
+
+// // ------------------- UPDATE ORDER ADDRESS -------------------
+// export const updateOrderAddress = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const { address, pincode, city, state, landmark, addressType } = req.body;
+//     const userId = req.user.id;
+//     const userRole = req.user.role;
+
+//     let order;
+//     if (userRole === 'admin') {
+//       order = await Order.findById(id);
+//     } else {
+//       order = await Order.findOne({ _id: id, userId });
+//     }
+
+//     if (!order) {
+//       return res.status(404).json({ success: false, message: "Order not found" });
+//     }
+
+//     if (order.status !== 'pending') {
+//       return res.status(400).json({ success: false, message: "Cannot update address for non-pending orders" });
+//     }
+
+//     if (!order.customer) order.customer = {};
+
+//     if (address !== undefined) order.customer.address = address;
+//     if (pincode !== undefined) order.customer.pincode = pincode;
+//     if (city !== undefined) order.customer.city = city;
+//     if (state !== undefined) order.customer.state = state;
+//     if (landmark !== undefined) order.customer.landmark = landmark;
+//     if (addressType !== undefined) order.customer.addressType = addressType;
+
+//     order.statusHistory.push({
+//       status: order.status,
+//       changedBy: userId,
+//       changedAt: new Date(),
+//       note: `Delivery address updated`
+//     });
+
+//     await order.save();
+
+//     res.status(200).json({ success: true, message: "Order address updated successfully", order });
+//   } catch (error) {
+//     console.error("Error updating order address:", error);
+//     res.status(500).json({ success: false, message: "Failed to update order address", error: error.message });
+//   }
+// };
+
+// // ------------------- GET SHIPPING LABEL BY ORDER ID -------------------
+// export const getOrderLabel = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const order = await Order.findById(id);
+    
+//     if (!order) {
+//       return res.status(404).json({ success: false, message: 'Order not found' });
+//     }
+    
+//     if (!order.shipment?.waybill && !order.fship?.waybill) {
+//       return res.status(404).json({ success: false, message: 'No shipping label available for this order' });
+//     }
+    
+//     const waybill = order.shipment?.waybill || order.fship?.waybill;
+//     const labelUrl = order.shipment?.labelUrl || order.fship?.labelUrl;
+    
+//     if (labelUrl) {
+//       try {
+//         const response = await fetch(labelUrl);
+//         const pdfBuffer = await response.arrayBuffer();
+//         res.setHeader('Content-Type', 'application/pdf');
+//         res.setHeader('Content-Disposition', `attachment; filename=shipping-label-${order.orderNumber}.pdf`);
+//         res.send(Buffer.from(pdfBuffer));
+//         return;
+//       } catch (fetchError) {
+//         console.error('Error fetching label from URL:', fetchError);
+//       }
+//     }
+    
+//     if (waybill) {
+//       try {
+//         const labelResponse = await generateShippingLabel(waybill);
+//         if (labelResponse.status && labelResponse.labelurl) {
+//           if (order.shipment) {
+//             order.shipment.labelUrl = labelResponse.labelurl;
+//           } else {
+//             order.fship = { ...order.fship, labelUrl: labelResponse.labelurl };
+//           }
+//           await order.save();
+          
+//           const response = await fetch(labelResponse.labelurl);
+//           const pdfBuffer = await response.arrayBuffer();
+//           res.setHeader('Content-Type', 'application/pdf');
+//           res.setHeader('Content-Disposition', `attachment; filename=shipping-label-${order.orderNumber}.pdf`);
+//           res.send(Buffer.from(pdfBuffer));
+//           return;
+//         }
+//       } catch (genError) {
+//         console.error('Error generating label:', genError);
+//       }
+//     }
+    
+//     res.status(404).json({ success: false, message: 'Unable to generate shipping label' });
+//   } catch (error) {
+//     console.error('Get order label error:', error);
+//     res.status(500).json({ success: false, message: 'Failed to fetch shipping label', error: error.message });
+//   }
+// };
+
+// // ------------------- GET SHIPPING DETAILS -------------------
+// export const getShippingDetails = async (req, res) => {
+//   try {
+//     const { id } = req.params;
+//     const order = await Order.findById(id);
+    
+//     if (!order) {
+//       return res.status(404).json({ success: false, message: 'Order not found' });
+//     }
+    
+//     let trackingData = null;
+//     let currentStatus = null;
+//     const waybill = order.shipment?.waybill || order.fship?.waybill;
+    
+//     if (waybill) {
+//       try {
+//         const statusResponse = await getShipmentStatus(waybill);
+//         if (statusResponse.status && statusResponse.summary) {
+//           currentStatus = statusResponse.summary;
+//         }
+//         const historyResponse = await getTrackingHistory(waybill);
+//         if (historyResponse.status && historyResponse.trackingdata) {
+//           trackingData = historyResponse.trackingdata;
+//         }
+//       } catch (trackError) {
+//         console.error('Error fetching tracking:', trackError);
+//       }
+//     }
+    
+//     res.status(200).json({
+//       success: true,
+//       data: {
+//         waybill: waybill || null,
+//         courier: order.shipment?.courier || order.fship?.courier || null,
+//         courierId: order.deliveryPartner || order.fship?.courierId || null,
+//         shippingCharge: order.deliveryCharge || order.fship?.shippingCharge || null,
+//         status: order.shipment?.status || order.fship?.status || 'pending',
+//         labelUrl: order.shipment?.labelUrl || order.fship?.labelUrl || null,
+//         pickupRegistered: order.shipment?.pickupRegistered || false,
+//         lastUpdated: order.shipment?.lastUpdated || order.fship?.lastUpdated || null,
+//         currentTracking: currentStatus,
+//         trackingHistory: trackingData
+//       }
+//     });
+//   } catch (error) {
+//     console.error('Get shipping details error:', error);
+//     res.status(500).json({ success: false, message: 'Failed to fetch shipping details', error: error.message });
+//   }
+// };
+
+
+
+
+
+
+
+
+
+
+
+
 import Order from '../models/Order.js';
 import Cart from '../models/Cart.js';
 import Payment from '../models/Payment.js';
-import axios from 'axios';
 import { generateOrderNumber } from "../utils/generateOrderNumber.js";
-import {
-  createShipment,
-  generateShippingLabel,
-  registerPickup, 
-  getShipmentStatus,
-  getTrackingHistory
-} from '../services/fshipService.js';
 import path from 'path';
 import fs from 'fs';
 import multer from 'multer';
@@ -4123,9 +5006,9 @@ const calculateOrderWeight = (items) => {
     let itemWeight = totalPages * paperWeightPerPage;
     
     if (item.bindingType === 'spiral') itemWeight += 0.050;
-    else if (item.bindingType === 'perfect') itemWeight += 0.080;
-    else if (item.bindingType === 'hardcover') itemWeight += 0.200;
-    else if (item.bindingType === 'saddle') itemWeight += 0.030;
+    else if (item.bindingType === 'perfect_glue') itemWeight += 0.080;
+    else if (item.bindingType === 'hardbound') itemWeight += 0.200;
+    else if (item.bindingType === 'centre_staple' || item.bindingType === 'corner_staple') itemWeight += 0.030;
     
     if (item.lamination === 'matte' || item.lamination === 'glossy') {
       itemWeight += totalPages * 0.001;
@@ -4203,15 +5086,14 @@ export const createOrderFromCart = async (req, res) => {
       discountsApplied,
       cartId, 
       paymentMode,
-      deliveryPartner,
       deliveryCharge,
-      orderWeight  // ✅ ADDED - CRITICAL FIX
+      orderWeight
     } = req.body;
 
     console.log("\n=== CREATE ORDER FROM CART ===");
     console.log("📦 orderWeight received from frontend:", orderWeight, "kg");
     console.log("📦 deliveryCharge received:", deliveryCharge);
-    console.log("📦 deliveryPartner received:", deliveryPartner);
+    console.log("📦 cartId received:", cartId);
 
     if (!items || !items.length) {
       return res.status(400).json({ success: false, message: "No items in order" });
@@ -4240,7 +5122,7 @@ export const createOrderFromCart = async (req, res) => {
         
         if (item.bindingType === 'perfect_glue') itemAmount += 50 * item.copies;
         if (item.bindingType === 'spiral') itemAmount += 30 * item.copies;
-        if (item.bindingType === 'hardcover') itemAmount += 150 * item.copies;
+        if (item.bindingType === 'hardbound') itemAmount += 150 * item.copies;
         
         console.log(`📦 Calculated amount for item: ₹${itemAmount.toFixed(2)}`);
       }
@@ -4252,7 +5134,7 @@ export const createOrderFromCart = async (req, res) => {
         paperType: item.paperType || "70gsm_normal",
         printColor: item.printColor || "bw",
         printSide: item.printSide || "double",
-        bindingType: item.bindingType || "none",
+        bindingType: item.bindingType || "perfect_glue",
         lamination: item.lamination || "none",
         instructions: item.instructions || "",
         files: item.files || [],
@@ -4285,9 +5167,7 @@ export const createOrderFromCart = async (req, res) => {
       paymentMode: paymentMode || 'upi',
       status: 'pending',
       cartId: cartId || null,
-      deliveryPartner: deliveryPartner || null,
       deliveryCharge: deliveryCharge || 0,
-      fship: {},
       statusHistory: [{
         status: 'pending',
         changedBy: userId,
@@ -4298,85 +5178,31 @@ export const createOrderFromCart = async (req, res) => {
 
     const savedOrder = await order.save();
 
-    console.log(`✅ Order saved: ${savedOrder.orderNumber}, Weight: ${savedOrder.orderWeight}kg`);
+    console.log(`✅ Order saved: ${savedOrder.orderNumber}, Weight: ${savedOrder.orderWeight}kg, Delivery: ₹${savedOrder.deliveryCharge}`);
 
-    if (cartId) await Cart.findByIdAndDelete(cartId);
-
-    // Create shipment for courier delivery
-    if (deliveryType === 'courier') {
-      try {
-        console.log("📦 Creating Fship shipment with weight:", finalOrderWeight, "kg");
-        
-        const fshipOrderData = {
-          orderNumber: savedOrder.orderNumber,
-          invoiceNumber: `INV${Date.now()}`,
-          paymentMode: paymentMode === 'cod' ? 1 : 2,
-          expressType: "surface",
-          orderWeight: finalOrderWeight,
-          weight: finalOrderWeight,
-          // subtotal: subtotal,
-          totalAmount: calculatedFinalAmount,
-          deliveryCharge: deliveryCharge,
-          warehousePincode: process.env.FSHIP_WAREHOUSE_PINCODE || "305001",
-          customer: {
-            name: customer.name,
-            phone: customer.phone,
-            email: customer.email || `${customer.phone}@temp.com`,
-            address: customer.address,
-            landmark: customer.landmark || "",
-            addressType: customer.addressType || "Home",
-            pincode: customer.pincode,
-            city: customer.city,
-            state: customer.state,
-            country: "India"
-          },
-          items: mappedItems,
-          courierId: deliveryPartner || 0
-        };
-        
-        console.log("📦 FShip Request:", {
-          weight: fshipOrderData.orderWeight,
-          deliveryCharge: fshipOrderData.deliveryCharge,
-          courierId: fshipOrderData.courierId
-        });
-        
-        const shippingResponse = await axios.post(
-          `${process.env.BACKEND_URL || 'https://xerox-2.onrender.com'}/api/shipping/create-shipment`,
-          {
-            order: fshipOrderData,
-            warehouseId: parseInt(process.env.FSHIP_WAREHOUSE_ID || "38020")
-          },
-          {
-            headers: { 'Content-Type': 'application/json' }
-          }
-        );
-        
-        if (shippingResponse.data.success) {
-          const shipmentData = shippingResponse.data.data;
-          
-          savedOrder.shipment = {
-            waybill: shipmentData.shipment.waybill,
-            courier: shipmentData.courier.used.name,
-            status: 'Booked',
-            labelUrl: shipmentData.shipment.labelurl || '',
-            lastUpdated: new Date()
-          };
-          savedOrder.shipmentCreated = true;
-          savedOrder.deliveryCharge = shipmentData.courier.used.charge;
-          savedOrder.deliveryPartner = shipmentData.courier.used.id;
-          
-          await savedOrder.save();
-          
-          console.log(`✅ Shipment created: ${shipmentData.shipment.waybill} with ${shipmentData.courier.used.name} - ₹${shipmentData.courier.used.charge}`);
-        }
-        
-      } catch (fshipError) {
-        console.error("❌ Fship error:", fshipError.response?.data || fshipError.message);
+    // ✅ DO NOT DELETE CART - Just mark it as ordered
+    if (cartId) {
+      const cart = await Cart.findById(cartId);
+      if (cart) {
+        cart.orderId = savedOrder._id;
+        cart.orderCreated = true;
+        cart.orderedAt = new Date();
+        await cart.save();
+        console.log(`✅ Cart ${cartId} linked to order ${savedOrder._id}`);
       }
-    } else {
-      console.log("📍 Store pickup order - No shipment created");
-      savedOrder.fship = { status: 'store_pickup', lastUpdated: new Date() };
+    }
+
+    // ✅ REMOVED ALL SHIPPING API CALLS
+    if (deliveryType === 'courier') {
+      console.log("📦 Courier order created - Using fixed delivery charges");
+      savedOrder.shipment = {
+        status: 'pending',
+        lastUpdated: new Date(),
+        note: `Courier delivery - Fixed charge: ₹${deliveryCharge} based on weight: ${finalOrderWeight}kg`
+      };
       await savedOrder.save();
+    } else {
+      console.log("📍 Store pickup order - No shipment needed");
     }
 
     res.status(201).json({
@@ -4408,6 +5234,12 @@ export const updateOrderAmount = async (req, res) => {
     const userId = req.user.id;
     const userRole = req.user.role;
 
+    console.log('=== UPDATE ORDER AMOUNT ===');
+    console.log('Order ID:', orderId);
+    console.log('Final Amount:', finalAmount);
+    console.log('Discount Amount:', discountAmount);
+    console.log('Discounts Applied:', JSON.stringify(discountsApplied, null, 2));
+
     let order;
     if (userRole === 'admin') {
       order = await Order.findById(orderId);
@@ -4437,6 +5269,8 @@ export const updateOrderAmount = async (req, res) => {
     });
 
     await order.save();
+
+    console.log('✅ Order amount updated successfully');
 
     res.status(200).json({
       success: true,
@@ -4691,10 +5525,13 @@ export const updatePaymentStatus = async (req, res) => {
   }
 };
 
-// ------------------- HANDLE PAYMENT SUCCESS -------------------
+// ------------------- HANDLE PAYMENT SUCCESS (DEPRECATED - use verifyPayment instead) -------------------
+// This is kept for backward compatibility but should not be used directly
 export const handlePaymentSuccess = async (req, res) => {
   try {
     const { orderId, paymentId, paymentMode, razorpayPaymentId, razorpayOrderId } = req.body;
+    
+    console.log('⚠️ DEPRECATED: handlePaymentSuccess called. Use /payment/verify-payment instead.');
     
     if (!orderId) {
       return res.status(400).json({ success: false, message: "Order ID is required" });
@@ -4746,7 +5583,6 @@ export const trackOrder = async (req, res) => {
     }
     
     const firstItem = order.items && order.items[0] || {};
-    const waybill = order.shipment?.waybill || order.fship?.waybill;
     
     res.status(200).json({
       success: true,
@@ -4758,8 +5594,8 @@ export const trackOrder = async (req, res) => {
         originalAmount: order.totalAmount,
         discountAmount: order.discountAmount,
         deliveryType: order.deliveryType === 'courier' ? 'Courier Delivery' : 'Store Pickup',
-        waybill: waybill,
-        courierName: order.shipment?.courier || order.fship?.courier,
+        deliveryCharge: order.deliveryCharge,
+        orderWeight: order.orderWeight,
         items: {
           pages: firstItem.pages || 0,
           copies: firstItem.copies || 0,
@@ -4835,11 +5671,7 @@ export const getOrderLabel = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
     
-    if (!order.shipment?.waybill && !order.fship?.waybill) {
-      return res.status(404).json({ success: false, message: 'No shipping label available for this order' });
-    }
-    
-    const waybill = order.shipment?.waybill || order.fship?.waybill;
+    // Check if label exists in order
     const labelUrl = order.shipment?.labelUrl || order.fship?.labelUrl;
     
     if (labelUrl) {
@@ -4855,30 +5687,11 @@ export const getOrderLabel = async (req, res) => {
       }
     }
     
-    if (waybill) {
-      try {
-        const labelResponse = await generateShippingLabel(waybill);
-        if (labelResponse.status && labelResponse.labelurl) {
-          if (order.shipment) {
-            order.shipment.labelUrl = labelResponse.labelurl;
-          } else {
-            order.fship = { ...order.fship, labelUrl: labelResponse.labelurl };
-          }
-          await order.save();
-          
-          const response = await fetch(labelResponse.labelurl);
-          const pdfBuffer = await response.arrayBuffer();
-          res.setHeader('Content-Type', 'application/pdf');
-          res.setHeader('Content-Disposition', `attachment; filename=shipping-label-${order.orderNumber}.pdf`);
-          res.send(Buffer.from(pdfBuffer));
-          return;
-        }
-      } catch (genError) {
-        console.error('Error generating label:', genError);
-      }
-    }
-    
-    res.status(404).json({ success: false, message: 'Unable to generate shipping label' });
+    // If no label URL, return message instead of trying to generate
+    res.status(404).json({ 
+      success: false, 
+      message: 'No shipping label available. Please generate label manually.' 
+    });
   } catch (error) {
     console.error('Get order label error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch shipping label', error: error.message });
@@ -4895,42 +5708,56 @@ export const getShippingDetails = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Order not found' });
     }
     
-    let trackingData = null;
-    let currentStatus = null;
-    const waybill = order.shipment?.waybill || order.fship?.waybill;
-    
-    if (waybill) {
-      try {
-        const statusResponse = await getShipmentStatus(waybill);
-        if (statusResponse.status && statusResponse.summary) {
-          currentStatus = statusResponse.summary;
-        }
-        const historyResponse = await getTrackingHistory(waybill);
-        if (historyResponse.status && historyResponse.trackingdata) {
-          trackingData = historyResponse.trackingdata;
-        }
-      } catch (trackError) {
-        console.error('Error fetching tracking:', trackError);
-      }
-    }
-    
+    // Return basic shipping info without API calls
     res.status(200).json({
       success: true,
       data: {
-        waybill: waybill || null,
-        courier: order.shipment?.courier || order.fship?.courier || null,
-        courierId: order.deliveryPartner || order.fship?.courierId || null,
-        shippingCharge: order.deliveryCharge || order.fship?.shippingCharge || null,
-        status: order.shipment?.status || order.fship?.status || 'pending',
-        labelUrl: order.shipment?.labelUrl || order.fship?.labelUrl || null,
+        waybill: order.shipment?.waybill || null,
+        courier: order.shipment?.courier || null,
+        courierId: order.deliveryPartner || null,
+        shippingCharge: order.deliveryCharge || null,
+        status: order.shipment?.status || 'pending',
+        labelUrl: order.shipment?.labelUrl || null,
         pickupRegistered: order.shipment?.pickupRegistered || false,
-        lastUpdated: order.shipment?.lastUpdated || order.fship?.lastUpdated || null,
-        currentTracking: currentStatus,
-        trackingHistory: trackingData
+        lastUpdated: order.shipment?.lastUpdated || null,
+        note: order.shipment?.note || 'Fixed delivery charge applied based on weight'
       }
     });
   } catch (error) {
     console.error('Get shipping details error:', error);
     res.status(500).json({ success: false, message: 'Failed to fetch shipping details', error: error.message });
+  }
+};
+
+// ------------------- GET ADMIN ALL ORDERS -------------------
+export const getAdminOrders = async (req, res) => {
+  try {
+    const userRole = req.user.role;
+    
+    if (userRole !== 'admin') {
+      return res.status(403).json({ success: false, message: "Admin access required" });
+    }
+    
+    const orders = await Order.find({})
+      .populate('payment')
+      .sort({ createdAt: -1 });
+    
+    const transformedOrders = orders.map(order => ({
+      ...order.toObject(),
+      paymentMethod: order.payment?.paymentMethod,
+      razorpayPaymentId: order.payment?.razorpayPaymentId || order.razorpayPaymentId,
+      paymentStatus: order.payment?.status || order.paymentStatus,
+      paymentMode: order.paymentMode || order.payment?.paymentMethod || 'upi',
+      displayAmount: order.finalAmount || order.totalAmount
+    }));
+    
+    res.status(200).json({ 
+      success: true, 
+      orders: transformedOrders,
+      count: transformedOrders.length
+    });
+  } catch (error) {
+    console.error("Error fetching admin orders:", error);
+    res.status(500).json({ success: false, message: "Failed to fetch orders" });
   }
 };

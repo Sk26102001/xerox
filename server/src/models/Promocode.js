@@ -136,7 +136,16 @@ const promoSchema = new mongoose.Schema({
     createdAt: {
         type: Date,
         default: Date.now
-    }
+    },
+     perUserLimit: {
+    type: Number,
+    default: 1,
+    min: 1
+  },
+  usedCount: {
+    type: Number,
+    default: 0
+  }
 });
 
 // Index for faster queries

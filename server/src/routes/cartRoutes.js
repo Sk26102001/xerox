@@ -102,6 +102,41 @@
 
 
 
+// import express from "express";
+// import {
+//   addToCart,
+//   replaceCart,
+//   getCart,
+//   deleteCartItem,
+//   updateCartItem,
+//   clearCart,
+//   updateCartAddress,      // ✅ ADDED
+//   // updateDeliveryPartner   // ✅ ADDED
+//   updateDeliveryCharge, 
+// } from "../controllers/cartController.js";
+// import auth from "../middleware/auth.js";
+
+// const router = express.Router();
+
+// // ✅ Address update route (PUT, not POST)
+// router.put('/address', auth, updateCartAddress);
+
+// // ✅ Delivery partner update route
+// // router.put('/delivery-partner', auth, updateDeliveryPartner);
+// router.put('/cart/delivery-charge', updateDeliveryCharge);
+
+// // Other cart routes
+// router.post("/", auth, addToCart);           // Add items to cart (append)
+// router.put("/replace", auth, replaceCart);   // Replace entire cart
+// router.get("/", auth, getCart);              // Get cart
+// router.put("/item/:id", auth, updateCartItem); // Update item quantity
+// router.delete("/item/:id", auth, deleteCartItem); // Delete item
+// router.delete("/", auth, clearCart);         // Clear entire cart
+
+// export default router;
+
+
+
 import express from "express";
 import {
   addToCart,
@@ -110,21 +145,22 @@ import {
   deleteCartItem,
   updateCartItem,
   clearCart,
-  updateCartAddress,      // ✅ ADDED
-  updateDeliveryPartner   // ✅ ADDED
+  updateCartAddress,
+  updateDeliveryCharge,
+   
 } from "../controllers/cartController.js";
 import auth from "../middleware/auth.js";
 
 const router = express.Router();
 
-// ✅ Address update route (PUT, not POST)
+// ✅ Address update route
 router.put('/address', auth, updateCartAddress);
 
-// ✅ Delivery partner update route
-router.put('/delivery-partner', auth, updateDeliveryPartner);
+// ✅ Delivery charge update route - FIXED path and added auth
+router.put('/delivery-charge', auth, updateDeliveryCharge);
 
-// Other cart routes
-router.post("/", auth, addToCart);           // Add items to cart (append)
+// ✅ Cart routes
+router.post("/add", auth, addToCart);        // FIXED: Changed from "/" to "/add"
 router.put("/replace", auth, replaceCart);   // Replace entire cart
 router.get("/", auth, getCart);              // Get cart
 router.put("/item/:id", auth, updateCartItem); // Update item quantity

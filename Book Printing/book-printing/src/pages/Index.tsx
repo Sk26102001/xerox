@@ -1162,7 +1162,8 @@ import { FaWhatsapp } from "react-icons/fa";
 import {
   BookOpen, Printer, Quote, Copy, Layers, CheckCircle, Star, Users, Clock, Award,
   Barcode, LayoutTemplate, Palette, HelpCircle,
-  Upload, ChevronRight, ArrowRight, Instagram, Calculator, Package, Truck, Shield
+  Upload, ChevronRight, ArrowRight, Instagram, Calculator, Package, Truck, Shield,
+  Sparkles
 } from 'lucide-react';
 import { useScrollAnimation } from '@/hooks/useScrollAnimation';
 import {
@@ -1172,7 +1173,8 @@ import {
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { API } from '@/api/api';
-import { toast, Toaster } from 'sonner';
+import { toast,  } from 'sonner';
+import { FreeDeliveryBanner } from '@/components/FreeDeliveryBanner';
 
 interface Testimonial {
   _id: string;
@@ -1517,6 +1519,50 @@ export default function Index() {
   const [testimonials, setTestimonials] = useState<Testimonial[]>([]);
   const [loadingTestimonials, setLoadingTestimonials] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pubForm, setPubForm] = useState({
+  name: '',
+  phone: '',
+  email: '',
+});
+const [pubLoading, setPubLoading] = useState(false);
+
+
+
+   const handlePubChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  setPubForm({ ...pubForm, [e.target.name]: e.target.value });
+};
+
+const handlePubSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!pubForm.name.trim() || !pubForm.phone.trim()) {
+    toast.error('Please enter your name and phone number');
+    return;
+  }
+  setPubLoading(true);
+  try {
+const response = await API.post('/contact', {
+  name: pubForm.name,
+  phone: pubForm.phone,
+  email: pubForm.email || '',
+  inquiryType: 'book_publishing',
+  subject: 'other',
+  message: 'Book publishing inquiry',
+  agreeToTerms: true
+});
+    if (response.data.success) {
+      toast.success(response.data.message);
+      setPubForm({ name: '', phone: '', email: '' });
+    } else {
+      toast.error(response.data.message || 'Failed to submit');
+    }
+  } catch (error: any) {
+    console.error('Book publishing error:', error);
+    toast.error(error.response?.data?.message || 'Network error. Please try again.');
+  } finally {
+    setPubLoading(false);
+  }
+};
+
 
   useEffect(() => {
     fetchTestimonials();
@@ -1606,11 +1652,20 @@ export default function Index() {
 
   return (
     <div className="min-h-screen bg-background">
-      <Toaster position="top-right" richColors />
-      <Navbar />
+      {/* <Toaster position="top-right" richColors /> */}
+{/* 
+      <FreeDeliveryBanner />
+
+      
+    
+      <Navbar /> */}
+            {/* Banner */}
+  <FreeDeliveryBanner />
+  <Navbar />
 
       {/* Hero Section */}
-      <section className="relative bg-secondary min-h-screen flex items-center overflow-hidden pt-16">
+      {/* <section className="relative bg-secondary min-h-screen flex items-center overflow-hidden pt-16"> */}
+      <section className="relative bg-secondary min-h-screen flex items-center overflow-hidden pt-28">
         <div className="absolute inset-0 opacity-5">
           <div className="absolute inset-0" style={{
             backgroundImage: 'repeating-linear-gradient(45deg, white 0, white 1px, transparent 0, transparent 50%)',
@@ -1652,6 +1707,8 @@ export default function Index() {
                     {badge}
                   </div>
                 ))}
+
+
               </div>
             </div>
 
@@ -1659,6 +1716,22 @@ export default function Index() {
               <div className="relative animate-float">
                 <div className="hidden lg:block relative animate-float">
                   <img src="/img1.jpeg" alt="Modern digital printing press in production" className="w-[800px] h-[300px] mx-auto rounded-2xl shadow-2xl object-cover border-8 border-white/10" />
+
+       <div className="mx-auto flex items-center justify-center gap-3 flex-wrap relative mt-6">
+        <Truck className="h-5 w-5 animate-bounce text-white" />
+
+        <span className="font-semibold">
+          🎉 <span className="font-bold underline text-white">FREE Delivery on all orders above</span> {" "}
+          <span className="font-bold text-yellow-300">
+            ₹5000
+           
+          </span>
+        </span>
+
+        <Sparkles className="h-4 w-4 text-yellow-300" />
+
+       
+      </div>
                   <div className="absolute -bottom-6 -right-6 bg-primary rounded-full p-5 shadow-xl animate-pulse">
                     <Printer className="h-10 w-10 text-white" />
                   </div>
@@ -1749,7 +1822,7 @@ export default function Index() {
       </section>
 
       {/* Gallery */}
-      <section className="py-16 md:py-20 bg-gradient-to-b from-background to-muted/30 overflow-hidden">
+      {/* <section className="py-16 md:py-20 bg-gradient-to-b from-background to-muted/30 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[16px] font-bold uppercase tracking-wider text-primary mb-5">
@@ -1768,7 +1841,95 @@ export default function Index() {
             </div>
           </div>
         </div>
-      </section>
+      </section> */}
+
+      {/* Gallery Section */}
+
+{/* Gallary */}
+<section className="py-16 md:py-20 bg-gradient-to-b from-background to-muted/30 overflow-hidden">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Header */}
+        <div className="text-center mb-10">
+           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[16px] font-bold uppercase tracking-wider text-primary mb-5">
+          <BookOpen className="h-5 w-4" /> Gallary
+        </div>
+          <p className="mt-4 text-muted-foreground text-lg max-w-3xl mx-auto">
+            From high-speed digital presses to expert binding — see how your books come to life with precision and care
+          </p>
+        </div>
+        <style>
+{`
+@keyframes autoScroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.auto-scroll {
+  animation: autoScroll 10s linear infinite;
+}
+
+.auto-scroll:hover {
+  animation-play-state: paused;
+}
+`}
+</style>
+
+        {/* Gallery */}
+        <div className="relative">
+        <div
+ className="
+  flex gap-6 md:gap-8
+  auto-scroll
+  will-change-transform
+"
+>
+            {galleryImages.map((image, index) => (
+              <div
+                key={index}
+                className="
+                  min-w-[280px] sm:min-w-[340px] md:min-w-[400px]
+                  h-64 md:h-80
+                  flex-shrink-0
+                  rounded-xl md:rounded-2xl
+                  overflow-hidden
+                  shadow-xl
+                  border border-border/40
+                  bg-muted/20
+                  group
+                  transition-all duration-500
+                  hover:shadow-2xl
+                  hover:scale-[1.02]
+                "
+              >
+                <img
+                  src={image.url}
+                  alt={image.alt}
+                  className="
+                    w-full h-full object-cover
+                    transition-transform duration-1000
+                    group-hover:scale-110
+                  "
+                  loading="lazy"
+                />
+              </div>
+            ))}
+          </div>
+
+          {/* Fade edges */}
+          {/* <div className="absolute inset-y-0 left-0 w-16 md:w-24 bg-gradient-to-r from-background to-transparent pointer-events-none z-10" />
+          <div className="absolute inset-y-0 right-0 w-16 md:w-24 bg-gradient-to-l from-background to-transparent pointer-events-none z-10" /> */}
+        </div>
+      </div>
+
+      {/* Optional: Add this to tailwind.config.js if you want to use hover:pause-scroll custom utility */}
+      {/* or just use the class directly in global CSS */}
+    </section>
+
+      
 
       {/* Price Calculator */}
       <section id="calculator" className="py-20 bg-background">
@@ -1784,7 +1945,7 @@ export default function Index() {
         </div>
       </section>
 
-      {/* Book Publishing Quotation */}
+      {/* Book Publishing Quotation
       <section className="py-20 bg-secondary">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-10 animate-on-scroll">
@@ -1835,7 +1996,90 @@ export default function Index() {
             </button>
           </div>
         </div>
-      </section>
+      </section> */}
+      {/* Book Publishing Quotation */}
+<section className="py-20 bg-secondary">
+  <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="text-center mb-10 animate-on-scroll">
+      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[11px] font-bold uppercase tracking-wider text-primary mb-5">
+        <BookOpen className="h-3.5 w-3.5" /> Industry Standard Publishing
+      </div>
+      <h2 className="text-3xl sm:text-4xl font-black text-white mt-2">Publish Your Book With Us</h2>
+      <p className="text-white/60 mt-3">Turn your manuscript into a professional book — fast, affordable, and GST-compliant</p>
+    </div>
+
+    <div className="mb-12 animate-on-scroll bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8 shadow-xl">
+      <div className="flex flex-col md:flex-row items-center gap-8">
+        <div className="w-full md:w-1/3 rounded-xl overflow-hidden shadow-lg">
+          <img src="https://i.pinimg.com/736x/ae/bf/f0/aebff0ed085370362da5a37c09fb39ae.jpg" alt="Author proudly holding published book" className="w-full h-64 object-cover" />
+        </div>
+        <div className="flex-1">
+          <h3 className="text-2xl font-black text-white mb-4">Professional Book Publishing Package</h3>
+          <p className="text-white/80 mb-6">We offer complete publishing services to convert your manuscript into a professionally published book.</p>
+          <div className="inline-block bg-primary/20 px-5 py-3 rounded-xl mb-6">
+            <p className="text-primary font-bold text-xl">₹11,000/- <span className="text-white/60 text-base font-normal">(GST Extra as Applicable)</span></p>
+          </div>
+          <ul className="space-y-4 text-white/90">
+            <li className="flex items-start gap-3"><Barcode className="h-5 w-5 text-primary mt-0.5 shrink-0" /><span>ISBN Registration (Government Approved)</span></li>
+            <li className="flex items-start gap-3"><LayoutTemplate className="h-5 w-5 text-primary mt-0.5 shrink-0" /><span>Professional Interior Layout & Formatting</span></li>
+            <li className="flex items-start gap-3"><Palette className="h-5 w-5 text-primary mt-0.5 shrink-0" /><span>Premium Cover Design (Front & Back)</span></li>
+            <li className="flex items-start gap-3"><HelpCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" /><span>Basic Publishing Assistance</span></li>
+            <li className="flex items-start gap-3"><Copy className="h-5 w-5 text-primary mt-0.5 shrink-0" /><span>10 Complimentary Author Copies</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div className="animate-on-scroll bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-8">
+      <form onSubmit={handlePubSubmit}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          <div>
+            <label className="block text-white/70 text-sm font-medium mb-1">Your Name *</label>
+            <input
+              type="text"
+              name="name"
+              value={pubForm.name}
+              onChange={handlePubChange}
+              required
+              placeholder="Full Name"
+              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/30 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-white/70 text-sm font-medium mb-1">Phone / WhatsApp *</label>
+            <input
+              type="tel"
+              name="phone"
+              value={pubForm.phone}
+              onChange={handlePubChange}
+              required
+              placeholder="+91 XXXXX XXXXX"
+              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/30 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm"
+            />
+          </div>
+          <div className="sm:col-span-2">
+            <label className="block text-white/70 text-sm font-medium mb-1">Email Address (Optional)</label>
+            <input
+              type="email"
+              name="email"
+              value={pubForm.email}
+              onChange={handlePubChange}
+              placeholder="your@email.com"
+              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-white/30 focus:ring-2 focus:ring-primary focus:border-primary outline-none transition-all text-sm"
+            />
+          </div>
+        </div>
+        <button
+          type="submit"
+          disabled={pubLoading}
+          className="w-full mt-8 bg-primary text-white font-bold py-4 rounded-lg hover:bg-primary/90 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] text-lg disabled:opacity-60 disabled:cursor-not-allowed"
+        >
+          {pubLoading ? 'Submitting...' : 'Send Quotation Request →'}
+        </button>
+      </form>
+    </div>
+  </div>
+</section>
 
       {/* Why Choose Us */}
       <section className="py-20 bg-background">

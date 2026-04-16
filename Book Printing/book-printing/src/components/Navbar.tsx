@@ -757,6 +757,7 @@ import { toast } from "sonner";
 import logo from '@/assets/logo2.png';
 import axios from 'axios';
 
+
 const navLinks = [
   { href: '/', label: 'Home' },
   { href: '/order', label: 'Place Order' },
@@ -804,6 +805,8 @@ export default function Navbar() {
       setCartItemCount(0);
     }
   };
+  
+  const isHomePage = location.pathname === "/";
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 20);
@@ -845,6 +848,13 @@ export default function Navbar() {
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
       isScrolled ? 'bg-white shadow-lg py-2 lg:py-3.5' : 'bg-white shadow-sm py-3 lg:py-5'
     }`}>
+{/* <nav className={`fixed top-12 left-0 right-0 z-40 transition-all duration-300 ${
+  isScrolled ? 'bg-white shadow-lg py-2 lg:py-3.5' : 'bg-white shadow-sm py-3 lg:py-5'
+}`}> */}
+
+  
+
+
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
@@ -963,3 +973,7 @@ export default function Navbar() {
     </nav>
   );
 }
+
+
+
+
