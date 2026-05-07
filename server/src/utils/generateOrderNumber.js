@@ -18,5 +18,5 @@ export const generateOrderNumber = async () => {
 
   const date = `${day}-${month}-${year}`;
 
-  return `ORD/${padded}/${date}`;
+  return `ORD-${padded}-${date}`;
 };

@@ -57,7 +57,8 @@ const router = express.Router();
 // Public routes (no auth)
 router.get('/active', promoController.getActivePromoCodes);
 router.post('/validate', promoController.validatePromoCode);
-router.post('/apply', promoController.applyPromoToOrder);
+// router.post('/apply', promoController.applyPromoToOrder);
+router.post('/apply', auth, promoController.applyPromoToOrder);
 
 // Admin only routes
 router.get('/', auth, adminAuth, promoController.getAllPromoCodes);

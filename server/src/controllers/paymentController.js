@@ -2161,6 +2161,11 @@ import Payment from '../models/Payment.js';
 import Order from '../models/Order.js';
 import Cart from '../models/Cart.js';
 import crypto from 'crypto';
+import { generateOrderNumber } from '../utils/generateOrderNumber.js';
+import { sendOrderNotificationToAdmin, sendOrderConfirmationToCustomer } from '../utils/emailService.js';
+// Create Razorpay Order
+// 
+
 
 // Create Razorpay Order
 export const createRazorpayOrder = async (req, res) => {
@@ -2168,34 +2173,25 @@ export const createRazorpayOrder = async (req, res) => {
         const { orderId, amount } = req.body;
         const userId = req.user.id;
 
-        // Fetch order details
         const order = await Order.findById(orderId);
         if (!order) {
-            return res.status(404).json({
-                success: false,
-                message: 'Order not found'
-            });
+            return res.status(404).json({ success: false, message: 'Order not found' });
         }
 
-        // Verify order belongs to user
         if (order.userId.toString() !== userId) {
-            return res.status(403).json({
-                success: false,
-                message: 'Unauthorized'
-            });
+            return res.status(403).json({ success: false, message: 'Unauthorized' });
         }
 
-        // Determine which amount to use for payment
         const paymentAmount = amount || order.finalAmount || order.totalAmount;
         
-        console.log('=== CREATE RAZORPAY ORDER ===');
-        console.log('Order ID:', orderId);
-        console.log('Order Number:', order.orderNumber);
-        console.log('Total Amount (Original):', order.totalAmount);
-        console.log('Final Amount (Discounted):', order.finalAmount);
-        console.log('Payment Amount (to charge):', paymentAmount);
+        // Prepare customer details to be stored in notes (not as top-level field)
+        const customerDetails = {
+            name: order.customer?.name || 'Customer',
+            email: order.customer?.email || 'customer@example.com',
+            contact: order.customer?.phone || '9999999999'
+        };
 
-        // Check if payment already exists
+        // Check for existing payment
         let existingPayment = await Payment.findOne({ 
             orderId: orderId,
             status: { $in: ['created', 'attempted'] }
@@ -2213,7 +2209,7 @@ export const createRazorpayOrder = async (req, res) => {
             });
         }
 
-        // Create Razorpay order options with the discounted amount
+        // ✅ Correct options – NO customer field
         const options = {
             amount: Math.round(paymentAmount * 100),
             currency: 'INR',
@@ -2224,17 +2220,17 @@ export const createRazorpayOrder = async (req, res) => {
                 orderNumber: order.orderNumber || `ORD-${orderId}`,
                 originalAmount: order.totalAmount,
                 discountedAmount: paymentAmount,
-                discountSaved: order.totalAmount - paymentAmount
+                discountSaved: order.totalAmount - paymentAmount,
+                // Customer details inside notes (allowed)
+                customerName: customerDetails.name,
+                customerEmail: customerDetails.email,
+                customerPhone: customerDetails.contact
             },
             payment_capture: 1
         };
 
-        console.log('Razorpay Order Options:', options);
-
-        // Create order in Razorpay
         const razorpayOrder = await razorpayInstance.orders.create(options);
 
-        // Create payment record
         const payment = new Payment({
             orderId: orderId,
             userId: userId,
@@ -2247,12 +2243,8 @@ export const createRazorpayOrder = async (req, res) => {
         });
 
         const savedPayment = await payment.save();
-        console.log("✅ Payment created:", savedPayment._id);
-
-        // Link payment to order
         order.payment = savedPayment._id;
         await order.save();
-        console.log("✅ Order linked to payment:", order._id);
 
         res.status(200).json({
             success: true,
@@ -2274,177 +2266,353 @@ export const createRazorpayOrder = async (req, res) => {
     }
 };
 
+
 // Verify Payment
+// export const verifyPayment = async (req, res) => {
+//     try {
+//         const {
+//             razorpay_order_id,
+//             razorpay_payment_id,
+//             razorpay_signature,
+//             finalAmount,
+//             totalDiscount,
+//             discountsApplied
+//         } = req.body;
+
+//         console.log('=== VERIFY PAYMENT ===');
+//         console.log('Razorpay Order ID:', razorpay_order_id);
+//         console.log('Razorpay Payment ID:', razorpay_payment_id);
+//         console.log('Final Amount from frontend:', finalAmount);
+//         console.log('Total Discount:', totalDiscount);
+//         console.log('Discounts Applied:', JSON.stringify(discountsApplied, null, 2));
+
+//         // 🔐 Signature verification
+//         const body = razorpay_order_id + "|" + razorpay_payment_id;
+//         const expectedSignature = crypto
+//             .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+//             .update(body)
+//             .digest('hex');
+
+//         if (expectedSignature !== razorpay_signature) {
+//             console.error('❌ Invalid signature');
+//             return res.status(400).json({
+//                 success: false,
+//                 message: 'Invalid payment signature'
+//             });
+//         }
+
+//         console.log('✅ Signature verified');
+
+//         // 🔍 Find payment
+//         let payment = await Payment.findOne({ razorpayOrderId: razorpay_order_id });
+
+//         if (!payment) {
+//             console.error('❌ Payment not found for razorpayOrderId:', razorpay_order_id);
+//             return res.status(404).json({
+//                 success: false,
+//                 message: 'Payment not found'
+//             });
+//         }
+
+//         // 🚫 Prevent duplicate processing
+//         if (payment.status === 'paid') {
+//             console.log('⚠️ Payment already processed');
+//             return res.status(200).json({
+//                 success: true,
+//                 message: 'Payment already verified',
+//                 paymentId: razorpay_payment_id,
+//                 paymentStatus: 'paid'
+//             });
+//         }
+
+//         // 🔄 Update payment
+//         payment.status = 'paid';
+//         payment.razorpayPaymentId = razorpay_payment_id;
+//         payment.razorpaySignature = razorpay_signature;
+//         await payment.save();
+//         console.log('✅ Payment record updated to paid');
+
+//         // 📦 Get order
+//         const order = await Order.findById(payment.orderId);
+
+//         if (!order) {
+//             console.error('❌ Order not found for payment:', payment.orderId);
+//             return res.status(404).json({
+//                 success: false,
+//                 message: 'Order not found'
+//             });
+//         }
+
+//         console.log('=== ORDER BEFORE UPDATE ===');
+//         console.log('Order ID:', order._id);
+//         console.log('Order Number:', order.orderNumber);
+//         console.log('Current paymentStatus:', order.paymentStatus);
+//         console.log('Current status:', order.status);
+//         console.log('Current finalAmount:', order.finalAmount);
+//         console.log('Current totalAmount:', order.totalAmount);
+
+//         // ✅ Update order with payment information
+//         order.paymentStatus = 'paid';
+//         order.status = 'processing';
+//         order.paymentId = razorpay_payment_id;
+//         order.razorpayPaymentId = razorpay_payment_id;
+//         order.paymentMode = 'upi';
+        
+//         // ✅ Update discount fields if provided from frontend
+//         if (finalAmount !== undefined && finalAmount > 0) {
+//             order.finalAmount = finalAmount;
+//             console.log(`✅ Updated finalAmount to: ${finalAmount}`);
+//         }
+        
+//         if (totalDiscount !== undefined && totalDiscount > 0) {
+//             order.discountAmount = totalDiscount;
+//             console.log(`✅ Updated discountAmount to: ${totalDiscount}`);
+//         }
+        
+//         if (discountsApplied) {
+//             order.discountsApplied = {
+//                 promo: discountsApplied.promo || null,
+//                 offer: discountsApplied.offer || null,
+//                 totalDiscount: totalDiscount || 0
+//             };
+//             console.log(`✅ Updated discountsApplied`);
+//         }
+
+//         // Add to status history
+//         if (!order.statusHistory) {
+//             order.statusHistory = [];
+//         }
+//         order.statusHistory.push({
+//             status: 'processing',
+//             changedBy: order.userId,
+//             changedAt: new Date(),
+//             note: `Payment completed. Amount: ₹${order.finalAmount || order.totalAmount}`
+//         });
+
+//         // ✅ CRITICAL: Save the order with all updates
+//         const savedOrder = await order.save();
+        
+//         console.log('=== ORDER AFTER UPDATE ===');
+//         console.log('Order Number:', savedOrder.orderNumber);
+//         console.log('Updated paymentStatus:', savedOrder.paymentStatus);
+//         console.log('Updated status:', savedOrder.status);
+//         console.log('Updated finalAmount:', savedOrder.finalAmount);
+//         console.log('Updated discountAmount:', savedOrder.discountAmount);
+//         console.log('✅ Order saved successfully');
+
+//         // ✅ Verify the save was successful by fetching again
+//         const verifyOrder = await Order.findById(order._id);
+//         console.log('🔍 Verification fetch - paymentStatus:', verifyOrder?.paymentStatus);
+
+//         // ✅ Clear cart after successful payment
+//         // await Cart.findOneAndDelete({ userId: order.userId });
+//         // console.log('✅ Cart cleared for user:', order.userId);
+
+//         // ✅ Check if shipment already exists
+//         if (order.deliveryType === 'courier') {
+//             if (order.shipment?.waybill) {
+//                 console.log(`✅ Shipment already exists with waybill: ${order.shipment.waybill}`);
+//             } else if (order.fship?.waybill) {
+//                 console.log(`✅ Shipment already exists with waybill: ${order.fship.waybill}`);
+//             } else {
+//                 console.log("⚠️ No shipment found for courier order");
+//             }
+//         }
+
+//         res.status(200).json({
+//             success: true,
+//             message: 'Payment verified successfully',
+//             paymentId: razorpay_payment_id,
+//             orderId: order._id,
+//             orderNumber: order.orderNumber,
+//             finalAmount: order.finalAmount,
+//             discountAmount: order.discountAmount,
+//             paymentStatus: order.paymentStatus
+//         });
+
+//     } catch (error) {
+//         console.error("🔥 Verify Payment Error:", error);
+//         res.status(500).json({
+//             success: false,
+//             message: 'Verification failed',
+//             error: error.message
+//         });
+//     }
+// };
+
 export const verifyPayment = async (req, res) => {
-    try {
-        const {
-            razorpay_order_id,
-            razorpay_payment_id,
-            razorpay_signature,
-            finalAmount,
-            totalDiscount,
-            discountsApplied
-        } = req.body;
+  try {
+    const {
+      razorpay_order_id,
+      razorpay_payment_id,
+      razorpay_signature,
+      finalAmount,
+      totalDiscount,
+      taxAmount,
+      discountsApplied,
+    } = req.body;
 
-        console.log('=== VERIFY PAYMENT ===');
-        console.log('Razorpay Order ID:', razorpay_order_id);
-        console.log('Razorpay Payment ID:', razorpay_payment_id);
-        console.log('Final Amount from frontend:', finalAmount);
-        console.log('Total Discount:', totalDiscount);
-        console.log('Discounts Applied:', JSON.stringify(discountsApplied, null, 2));
+    // 1. Signature verification
+    const body = razorpay_order_id + "|" + razorpay_payment_id;
+    const expectedSignature = crypto
+      .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
+      .update(body)
+      .digest('hex');
 
-        // 🔐 Signature verification
-        const body = razorpay_order_id + "|" + razorpay_payment_id;
-        const expectedSignature = crypto
-            .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
-            .update(body)
-            .digest('hex');
-
-        if (expectedSignature !== razorpay_signature) {
-            console.error('❌ Invalid signature');
-            return res.status(400).json({
-                success: false,
-                message: 'Invalid payment signature'
-            });
-        }
-
-        console.log('✅ Signature verified');
-
-        // 🔍 Find payment
-        let payment = await Payment.findOne({ razorpayOrderId: razorpay_order_id });
-
-        if (!payment) {
-            console.error('❌ Payment not found for razorpayOrderId:', razorpay_order_id);
-            return res.status(404).json({
-                success: false,
-                message: 'Payment not found'
-            });
-        }
-
-        // 🚫 Prevent duplicate processing
-        if (payment.status === 'paid') {
-            console.log('⚠️ Payment already processed');
-            return res.status(200).json({
-                success: true,
-                message: 'Payment already verified',
-                paymentId: razorpay_payment_id,
-                paymentStatus: 'paid'
-            });
-        }
-
-        // 🔄 Update payment
-        payment.status = 'paid';
-        payment.razorpayPaymentId = razorpay_payment_id;
-        payment.razorpaySignature = razorpay_signature;
-        await payment.save();
-        console.log('✅ Payment record updated to paid');
-
-        // 📦 Get order
-        const order = await Order.findById(payment.orderId);
-
-        if (!order) {
-            console.error('❌ Order not found for payment:', payment.orderId);
-            return res.status(404).json({
-                success: false,
-                message: 'Order not found'
-            });
-        }
-
-        console.log('=== ORDER BEFORE UPDATE ===');
-        console.log('Order ID:', order._id);
-        console.log('Order Number:', order.orderNumber);
-        console.log('Current paymentStatus:', order.paymentStatus);
-        console.log('Current status:', order.status);
-        console.log('Current finalAmount:', order.finalAmount);
-        console.log('Current totalAmount:', order.totalAmount);
-
-        // ✅ Update order with payment information
-        order.paymentStatus = 'paid';
-        order.status = 'processing';
-        order.paymentId = razorpay_payment_id;
-        order.razorpayPaymentId = razorpay_payment_id;
-        order.paymentMode = 'upi';
-        
-        // ✅ Update discount fields if provided from frontend
-        if (finalAmount !== undefined && finalAmount > 0) {
-            order.finalAmount = finalAmount;
-            console.log(`✅ Updated finalAmount to: ${finalAmount}`);
-        }
-        
-        if (totalDiscount !== undefined && totalDiscount > 0) {
-            order.discountAmount = totalDiscount;
-            console.log(`✅ Updated discountAmount to: ${totalDiscount}`);
-        }
-        
-        if (discountsApplied) {
-            order.discountsApplied = {
-                promo: discountsApplied.promo || null,
-                offer: discountsApplied.offer || null,
-                totalDiscount: totalDiscount || 0
-            };
-            console.log(`✅ Updated discountsApplied`);
-        }
-
-        // Add to status history
-        if (!order.statusHistory) {
-            order.statusHistory = [];
-        }
-        order.statusHistory.push({
-            status: 'processing',
-            changedBy: order.userId,
-            changedAt: new Date(),
-            note: `Payment completed. Amount: ₹${order.finalAmount || order.totalAmount}`
-        });
-
-        // ✅ CRITICAL: Save the order with all updates
-        const savedOrder = await order.save();
-        
-        console.log('=== ORDER AFTER UPDATE ===');
-        console.log('Order Number:', savedOrder.orderNumber);
-        console.log('Updated paymentStatus:', savedOrder.paymentStatus);
-        console.log('Updated status:', savedOrder.status);
-        console.log('Updated finalAmount:', savedOrder.finalAmount);
-        console.log('Updated discountAmount:', savedOrder.discountAmount);
-        console.log('✅ Order saved successfully');
-
-        // ✅ Verify the save was successful by fetching again
-        const verifyOrder = await Order.findById(order._id);
-        console.log('🔍 Verification fetch - paymentStatus:', verifyOrder?.paymentStatus);
-
-        // ✅ Clear cart after successful payment
-        // await Cart.findOneAndDelete({ userId: order.userId });
-        // console.log('✅ Cart cleared for user:', order.userId);
-
-        // ✅ Check if shipment already exists
-        if (order.deliveryType === 'courier') {
-            if (order.shipment?.waybill) {
-                console.log(`✅ Shipment already exists with waybill: ${order.shipment.waybill}`);
-            } else if (order.fship?.waybill) {
-                console.log(`✅ Shipment already exists with waybill: ${order.fship.waybill}`);
-            } else {
-                console.log("⚠️ No shipment found for courier order");
-            }
-        }
-
-        res.status(200).json({
-            success: true,
-            message: 'Payment verified successfully',
-            paymentId: razorpay_payment_id,
-            orderId: order._id,
-            orderNumber: order.orderNumber,
-            finalAmount: order.finalAmount,
-            discountAmount: order.discountAmount,
-            paymentStatus: order.paymentStatus
-        });
-
-    } catch (error) {
-        console.error("🔥 Verify Payment Error:", error);
-        res.status(500).json({
-            success: false,
-            message: 'Verification failed',
-            error: error.message
-        });
+    if (expectedSignature !== razorpay_signature) {
+      return res.status(400).json({ success: false, message: 'Invalid payment signature' });
     }
+
+    // 2. Idempotency check – order already exists?
+    const existingOrder = await Order.findOne({ razorpayOrderId: razorpay_order_id });
+    if (existingOrder) {
+      if (global.tempOrders && global.tempOrders.has(razorpay_order_id)) {
+        global.tempOrders.delete(razorpay_order_id);
+      }
+      return res.json({
+        success: true,
+        message: 'Order already processed',
+        orderId: existingOrder._id,
+        orderNumber: existingOrder.orderNumber,
+        finalAmount: existingOrder.finalAmount
+      });
+    }
+
+    // 3. Retrieve temporary session data
+    if (!global.tempOrders || !global.tempOrders.has(razorpay_order_id)) {
+      return res.status(404).json({ success: false, message: 'Temporary order data not found' });
+    }
+    const tempData = global.tempOrders.get(razorpay_order_id);
+    const { cartData, userId, finalAmount: tempFinalAmount } = tempData;
+
+    const effectiveTotalDiscount = totalDiscount || 0;
+    const effectiveTaxAmount = Math.round(taxAmount || cartData.taxAmount || 0);
+    const effectiveDiscountsApplied = discountsApplied || {};
+
+    // 4. Generate a real order number
+    const orderNumber = await generateOrderNumber();
+
+    // 5. Prepare items
+    const mappedItems = cartData.items.map(item => ({
+      pages: item.pages || 0,
+      copies: item.copies || 1,
+      paperSize: item.paperSize || "A4",
+      paperType: item.paperType || "70gsm_normal",
+      printColor: item.printColor || "bw",
+      printSide: item.printSide || "double",
+      bindingType: item.bindingType || "perfect_glue",
+      lamination: item.lamination || "none",
+      instructions: item.instructions || "",
+      files: item.files || [],
+      amount: Math.round(item.productValue || 0),
+      unitPrice: Math.round(item.unitPrice || 0)
+    }));
+
+    // 🔧 NEW: Compute subtotal (items only) and then add delivery to totalAmount
+    const subtotal = mappedItems.reduce((sum, i) => sum + i.amount, 0);
+    const deliveryCharge = cartData.deliveryCharge || 0;
+    const totalAmount = Math.round(subtotal + deliveryCharge);      // totalAmount now includes delivery
+    const finalAmountCalculated = Math.round(totalAmount - effectiveTotalDiscount); // final = total - discount
+
+    // Use finalAmount from frontend if provided, else our calculated value
+    const effectiveFinalAmount = finalAmount !== undefined ? Math.round(finalAmount) : finalAmountCalculated;
+
+    // 6. Create the order
+    const order = new Order({
+      userId,
+      items: mappedItems,
+      customer: cartData.customer,
+      orderMode: cartData.orderMode || "single",
+      deliveryType: cartData.deliveryType || "pickup",
+      totalAmount,                            // ✅ includes delivery
+      finalAmount: effectiveFinalAmount,      // ✅ total - discount (or frontend value)
+      discountAmount: effectiveTotalDiscount,
+      taxAmount: effectiveTaxAmount,
+      discountsApplied: {
+        promo: effectiveDiscountsApplied?.promo || null,
+        offer: effectiveDiscountsApplied?.offer || null,
+        totalDiscount: effectiveTotalDiscount
+      },
+      orderNumber,
+      orderWeight: cartData.orderWeight || 0,
+      paymentStatus: 'paid',
+      paymentMode: 'upi',
+      status: 'processing',
+      deliveryCharge,                          // ✅ stored separately for reference
+      paymentId: razorpay_payment_id,
+      razorpayPaymentId: razorpay_payment_id,
+      razorpayOrderId: razorpay_order_id,
+      statusHistory: [{
+        status: 'processing',
+        changedBy: userId,
+        changedAt: new Date(),
+        note: `Payment completed via Razorpay. Order created after payment.`
+      }]
+    });
+
+
+    const savedOrder = await order.save();
+    // ==============================
+// ✅ SEND EMAIL NOTIFICATIONS
+// ==============================
+// Prepare order data for emails
+// After saving the order, send email notifications
+const emailOrderData = {
+  orderId: savedOrder.orderNumber,
+  customerName: savedOrder.customer.name,
+  customerEmail: savedOrder.customer.email,
+  customerPhone: savedOrder.customer.phone,
+  items: savedOrder.items.map(item => ({
+    name: `${item.pages} pages, ${item.copies} copy(s) - ${item.bindingType.replace('_', ' ')}`,
+    quantity: 1,
+    price: item.amount,
+    description: `${item.printColor === 'color' ? 'Color' : 'B&W'} print, ${item.paperType} paper`
+  })),
+  totalAmount: savedOrder.finalAmount,          // final paid amount (after discount & including delivery)
+  subtotal: savedOrder.totalAmount,             // original subtotal (items + GST) WITHOUT delivery
+  deliveryCharge: savedOrder.deliveryCharge,    // ✅ delivery charge
+  discountAmount: savedOrder.discountAmount,    // ✅ discount amount (already present)
+  createdAt: savedOrder.createdAt,
+  shippingAddress: savedOrder.deliveryType === 'courier' 
+    ? `${savedOrder.customer.address || ''}, ${savedOrder.customer.city || ''}, ${savedOrder.customer.pincode || ''}` 
+    : null,
+  paymentMethod: savedOrder.paymentMode || 'COD',
+  notes: savedOrder.items[0]?.instructions || '',
+  estimatedDelivery: savedOrder.deliveryType === 'courier' ? '3-5 business days' : 'Ready for pickup within 2 days'
+};
+// Send admin notification (fire and forget)
+if (process.env.ADMIN_EMAIL) {
+  sendOrderNotificationToAdmin(emailOrderData).catch(err => 
+    console.error('❌ Admin email error:', err)
+  );
+} else {
+  console.warn('⚠️ ADMIN_EMAIL not set, skipping admin notification');
+}
+
+// Send customer confirmation (only if email exists)
+if (savedOrder.customer.email) {
+  sendOrderConfirmationToCustomer(emailOrderData).catch(err => 
+    console.error('❌ Customer email error:', err)
+  );
+} else {
+  console.warn(`⚠️ Customer email missing for order ${savedOrder.orderNumber}, skipping confirmation`);
+}
+
+    // 7. Clean up temporary session
+    global.tempOrders.delete(razorpay_order_id);
+
+    res.json({
+      success: true,
+      message: 'Payment verified and order created',
+      orderId: savedOrder._id,
+      orderNumber: savedOrder.orderNumber,
+      finalAmount: savedOrder.finalAmount,
+      
+    });
+  } catch (error) {
+    console.error("Verify Payment Error:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
 };
 
 // Get Payment Status
@@ -2623,6 +2791,57 @@ export const initiateRefund = async (req, res) => {
     }
 };
 
+// Create temporary Razorpay order from cart data (no order saved in DB)
+// Create temporary Razorpay order from cart data (no MongoDB order created)
+export const createTempRazorpayOrder = async (req, res) => {
+  try {
+    const { cartData, finalAmount } = req.body;
+    const userId = req.user.id;
+
+    // Initialize global Map if not exists
+    if (!global.tempOrders) global.tempOrders = new Map();
+
+    if (!cartData || !cartData.items?.length) {
+      return res.status(400).json({ success: false, message: "Cart is empty" });
+    }
+
+    const roundedRupees = Math.round(finalAmount);
+const amountInPaise = roundedRupees * 100;
+    const options = {
+      amount: amountInPaise,
+      currency: 'INR',
+      receipt: `temp_${Date.now()}`,
+      notes: { userId: userId.toString(), temp: 'true' },
+      payment_capture: 1
+    };
+
+    const razorpayOrder = await razorpayInstance.orders.create(options);
+    const tempSessionId = razorpayOrder.id;
+
+    // Store cart data temporarily (15 min expiry)
+    global.tempOrders.set(tempSessionId, {
+      userId,
+      cartData,
+      finalAmount,
+      createdAt: Date.now()
+    });
+    setTimeout(() => global.tempOrders.delete(tempSessionId), 15 * 60 * 1000);
+
+    res.json({
+      success: true,
+      razorpayOrderId: razorpayOrder.id,
+      tempSessionId,
+      amount: razorpayOrder.amount,
+      currency: razorpayOrder.currency,
+      key: process.env.RAZORPAY_KEY_ID,
+      amountInRupees: razorpayOrder.amount / 100
+    });
+  } catch (error) {
+    console.error("Error creating temporary Razorpay order:", error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // Webhook Handler for Razorpay Events
 export const razorpayWebhook = async (req, res) => {
     try {
@@ -2742,3 +2961,30 @@ export const razorpayWebhook = async (req, res) => {
         });
     }
 };
+
+
+
+// // In /payment/create-order endpoint
+// const order = await Order.findById(orderId);
+
+// const customerDetails = {
+//   name: order.customer?.name || 'Customer',
+//   email: order.customer?.email || 'customer@example.com',
+//   contact: order.customer?.phone || '9999999999'
+// };
+
+// const options = {
+//   amount: Math.round(paymentAmount * 100),
+//   currency: 'INR',
+//   receipt: `order_${orderId}`,
+//   customer: customerDetails,   // ✅ Add this
+//   notes: {
+//     orderId: orderId.toString(),
+//     userId: userId.toString(),
+//     orderNumber: order.orderNumber,
+//     originalAmount: order.totalAmount,
+//     discountedAmount: paymentAmount,
+//     discountSaved: order.totalAmount - paymentAmount
+//   },
+//   payment_capture: 1
+// };

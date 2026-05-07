@@ -445,6 +445,9 @@ import auth from "./middleware/auth.js";
 import { uploadFile, uploadSingleFile } from './controllers/orderController.js';
 import { setupWebSocketServer, broadcastOrderUpdate } from './websocket.js';
 
+// At the top of server.js, after other imports
+global.tempOrders = new Map();
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -477,6 +480,11 @@ app.use(cors({
 }));
 
 app.use(express.json());
+
+app.use(
+  "/api/payment/webhook",
+  express.raw({ type: "application/json" })
+);
 
 // Request logging
 app.use((req, res, next) => {

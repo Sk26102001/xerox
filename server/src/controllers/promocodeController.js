@@ -976,47 +976,97 @@ export const promoController = {
   },
 
   // Apply promo to order (after payment success)
-  async applyPromoToOrder(req, res) {
+  // async applyPromoToOrder(req, res) {
+  //   try {
+  //     const { promoCodeId, userId, orderId, cartTotal } = req.body;
+
+  //     const promoCode = await PromoCode.findById(promoCodeId);
+  //     if (!promoCode || !promoCode.active || promoCode.expiryDate < new Date()) {
+  //       return res.status(400).json({ success: false, error: 'Invalid promo code' });
+  //     }
+
+  //     if (promoCode.usedCount >= promoCode.usageLimit) {
+  //       return res.status(400).json({ success: false, error: 'Usage limit reached' });
+  //     }
+
+  //     // Check per‑user limit again
+  //     const userUsageCount = await UserPromoUsage.countDocuments({ userId, promoCodeId });
+  //     if (userUsageCount >= promoCode.perUserLimit) {
+  //       return res.status(400).json({ success: false, error: 'You have reached your personal limit for this code' });
+  //     }
+
+  //     const discount = promoCode.calculateDiscount(cartTotal);
+
+  //     // Increment global counter
+  //     promoCode.usedCount += 1;
+  //     await promoCode.save();
+
+  //     // Record user usage
+  //     const userUsage = new UserPromoUsage({
+  //       userId,
+  //       promoCodeId,
+  //       orderId,
+  //       discountAmount: discount
+  //     });
+  //     await userUsage.save();
+
+  //     res.json({
+  //       success: true,
+  //       data: { discount, promoCode }
+  //     });
+  //   } catch (error) {
+  //     console.error('Apply promo error:', error);
+  //     res.status(500).json({ success: false, error: error.message });
+  //   }
+  // }
+
+async applyPromoToOrder(req, res) {
+  try {
+    const { promoCodeId, orderId, cartTotal } = req.body;
+    const userId = req.user.id;
+
+    // 1. Check if user already used this promo code
+    const existingUsage = await UserPromoUsage.findOne({ userId, promoCodeId });
+    if (existingUsage) {
+      return res.status(400).json({ success: false, error: 'You have already used this promo code.' });
+    }
+
+    // 2. Validate promo code
+    const promoCode = await PromoCode.findById(promoCodeId);
+    if (!promoCode || !promoCode.active || promoCode.expiryDate < new Date()) {
+      return res.status(400).json({ success: false, error: 'Invalid promo code' });
+    }
+
+    if (promoCode.usedCount >= promoCode.usageLimit) {
+      return res.status(400).json({ success: false, error: 'Promo code usage limit reached' });
+    }
+
+    const discount = promoCode.calculateDiscount(cartTotal);
+
+    // 3. Atomic insert (handles race condition)
     try {
-      const { promoCodeId, userId, orderId, cartTotal } = req.body;
-
-      const promoCode = await PromoCode.findById(promoCodeId);
-      if (!promoCode || !promoCode.active || promoCode.expiryDate < new Date()) {
-        return res.status(400).json({ success: false, error: 'Invalid promo code' });
-      }
-
-      if (promoCode.usedCount >= promoCode.usageLimit) {
-        return res.status(400).json({ success: false, error: 'Usage limit reached' });
-      }
-
-      // Check per‑user limit again
-      const userUsageCount = await UserPromoUsage.countDocuments({ userId, promoCodeId });
-      if (userUsageCount >= promoCode.perUserLimit) {
-        return res.status(400).json({ success: false, error: 'You have reached your personal limit for this code' });
-      }
-
-      const discount = promoCode.calculateDiscount(cartTotal);
-
-      // Increment global counter
-      promoCode.usedCount += 1;
-      await promoCode.save();
-
-      // Record user usage
-      const userUsage = new UserPromoUsage({
+      const newUsage = new UserPromoUsage({
         userId,
         promoCodeId,
         orderId,
         discountAmount: discount
       });
-      await userUsage.save();
-
-      res.json({
-        success: true,
-        data: { discount, promoCode }
-      });
-    } catch (error) {
-      console.error('Apply promo error:', error);
-      res.status(500).json({ success: false, error: error.message });
+      await newUsage.save();
+    } catch (err) {
+      if (err.code === 11000) {
+        return res.status(400).json({ success: false, error: 'You have already used this promo code.' });
+      }
+      throw err;
     }
+
+    // 4. Update global counter
+    promoCode.usedCount += 1;
+    await promoCode.save();
+
+    res.json({ success: true, data: { discount, promoCode } });
+  } catch (error) {
+    console.error('Apply promo error:', error);
+    res.status(500).json({ success: false, error: error.message });
   }
+}
 };
